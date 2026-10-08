@@ -24,27 +24,17 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 
 /**
- * The creative tabs' groups: which entries a definition folds into one icon, and what that icon does when it is
- * clicked. This is the mod's public runtime, so another mod asking "what is inside this group", "is it open" or
- * "open it" needs nothing else.
+ * The creative tabs' groups: which stacks a definition folds into one icon, and what that icon does when clicked.
+ * This is the mod's public runtime - another mod asking what is in a group, whether it is open, or to open it needs
+ * nothing else.
  *
- * <p><b>This is a client mod.</b> A server never builds a creative tab - the only call path into
- * {@code CreativeModeTab#buildContents} runs from the creative screen - so a server has nothing to fold and nothing to
- * say about folding. Everything here is therefore client only: the definitions come from the client's own resource
- * packs (see {@link CreativeGroupLoader}), the tab lists are the client's, and no part of this reads or writes
- * anything the server owns. Nothing needs syncing, and nothing breaks when the server has never heard of this mod.
+ * <p>Client only, because a server never builds a creative tab. Two platform constraints shape everything here: a
+ * tab's entry set compares item and components only, so icons must differ by a component and members must actually
+ * leave the list rather than be skipped while drawing; and the search page reads each tab's <em>search</em> list, so
+ * members are removed from the <em>parent</em> list alone - which is the whole reason they stay searchable.
  *
- * <p>Two hard constraints decide the shape of everything here. First, a tab's own entry set compares item and
- * components only, so two groups' icons must differ by a component and the members must leave the tab's list rather
- * than merely be skipped while drawing. Second, the search page collects each tab's <em>search</em> list, so the
- * members are removed from the parent list alone: that is the whole reason they stay searchable, and why nothing here
- * ever touches the search page.
- *
- * <p>Everything is per tab. A definition names the tabs it folds in, so the same stack can be folded on one tab and
- * left alone on another, and a tab's members are remembered against that tab - the icon carries the tab it was
- * written for, which is what makes a click open the right list.
- *
- * <p>The fold is the last listener on the build event, so it sees what every other contributor put in.
+ * <p>Everything is per tab, so the same stack can be folded on one tab and left alone on another. The fold is the
+ * last listener on the build event, so it sees what every other contributor put in.
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class CreativeGroupService {
@@ -64,22 +54,18 @@ public final class CreativeGroupService {
         ResourceKey<CreativeModeTab> tabKey = event.getTabKey();
         MEMBERS.put(tabKey, new LinkedHashMap<>());
 
-        // Before anything is folded, and against the contents as the game built them: an entry that matches nothing
-        // here matched nothing, and the fold is about to take the matches out from under it. Once per reload, so it
-        // happens on whichever tab is built first.
+        // Must run before anything is taken out, and against the contents as the game built them.
         CreativeGroupLoader.checkAgainst(tabKey, event.getParentEntries());
 
-        // Only the groups that fold on this tab are candidates. Filtering before the winner is picked, rather than
-        // after, is what keeps a group belonging to another tab from shadowing one that belongs to this one: the two
-        // would otherwise compete on priority alone, the winner would then be refused for being on the wrong tab, and
-        // the stack would be dropped instead of folded into the group that could actually take it.
+        // Filter by tab before picking a winner, not after: a group from another tab would otherwise win on priority,
+        // then be refused here, and the stack would be dropped rather than folded into the group that could take it.
         List<CreativeGroup> candidates = CreativeGroupLoader.groups()
                 .filter(group -> group.creativeTabs().contains(tabKey))
                 .toList();
         Map<Identifier, CreativeGroup> groups = new LinkedHashMap<>();
         Map<Identifier, List<ItemStack>> folded = new LinkedHashMap<>();
         for (ItemStack stack : List.copyOf(event.getParentEntries())) {
-            // An icon is never a member: a rebuild must not fold the icon a previous build wrote.
+            // A rebuild must not fold the icon a previous build wrote.
             if (stack.is(BctItems.GROUP.get())) continue;
             Optional<CreativeGroup> found = groupOf(candidates, stack);
             if (found.isEmpty()) continue;
@@ -90,7 +76,7 @@ public final class CreativeGroupService {
 
         for (Map.Entry<Identifier, List<ItemStack>> entry : folded.entrySet()) {
             List<ItemStack> members = entry.getValue();
-            // The icon is inserted before the members are taken out: moving an entry refuses a target that is gone.
+            // Insert before removing: moving an entry refuses a target that is already gone.
             event.insertBefore(members.getFirst(), icon(tabKey, groups.get(entry.getKey())), TabVisibility.PARENT_TAB_ONLY);
             Set<ItemStack> removing = Collections.newSetFromMap(new IdentityHashMap<>());
             removing.addAll(members);
@@ -112,9 +98,9 @@ public final class CreativeGroupService {
     }
 
     /**
-     * The icon a group is shown as on one tab. The lock is the platform's own answer to "this entry is not a thing you
-     * can take": every click path in the creative screen asks {@code Slot#mayPickup} first, and the quick-craft drag
-     * asks it too, so the icon cannot be picked up even when nothing here runs.
+     * The icon a group is shown as on one tab. The slot lock is the platform's own "not a thing you can take": every
+     * click path in the creative screen asks {@code Slot#mayPickup} first, so the icon cannot be picked up even when
+     * nothing here runs.
      */
     public static ItemStack icon(ResourceKey<CreativeModeTab> tab, CreativeGroup group) {
         ItemStack icon = new ItemStack(BctItems.GROUP.get());
@@ -126,10 +112,8 @@ public final class CreativeGroupService {
     }
 
     /**
-     * Opens or closes one group in place, returning whether anything changed. The list is what a screen is showing -
-     * its own copy of the folded tab - and not the tab's list itself: expanding is a property of the visit, so a page
-     * that is opened again (or a tab that is switched back to) starts folded, because vanilla refills the screen from
-     * the tab. The members are the stacks the fold kept, which is what makes the two directions the same operation.
+     * Opens or closes one group in place, returning whether anything changed. The list is a screen's own copy, not
+     * the tab's - expanding is a property of the visit, so a page always opens folded.
      */
     public static boolean toggle(Collection<ItemStack> display, ResourceKey<CreativeModeTab> tab,
                                  CreativeGroup group, List<ItemStack> members) {
@@ -144,14 +128,12 @@ public final class CreativeGroupService {
         boolean opened = false;
         for (ItemStack stack : display) {
             rebuilt.add(stack);
-            // Found by the components rather than by object identity: a rebuild replaces the icon, and the new one
-            // still stands for the same group on the same tab.
             if (!opened && isIconOf(stack, tab, group)) {
                 rebuilt.addAll(members);
                 opened = true;
             }
         }
-        // An icon that is not on this list is a group from another tab, or one the list never had: nothing to open.
+        // No icon on this list means a group from another tab, or one the list never had.
         if (!opened) return false;
         display.clear();
         display.addAll(rebuilt);
@@ -159,9 +141,8 @@ public final class CreativeGroupService {
     }
 
     /**
-     * What a group is drawn as on the tab its icon carries: its own icon, or - when the definition writes none - the
-     * first member the fold found there. A template that no longer builds a valid stack counts as "writes none",
-     * because that is what {@code ItemStackTemplate#create} answers for one whose components no longer fit its item.
+     * What a group is drawn as on the tab its icon carries: its written icon, or the first member the fold found. A
+     * template that no longer builds a valid stack counts as "writes none", matching {@code ItemStackTemplate#create}.
      */
     public static ItemStack displayIcon(ItemStack icon) {
         CreativeGroup group = icon.get(BctDataComponents.CREATIVE_GROUP);
@@ -173,8 +154,7 @@ public final class CreativeGroupService {
     }
 
     /**
-     * The stacks one tab's fold took off it for one group, in tab order. Empty for a tab that has not been built since
-     * the last reload.
+     * The stacks one tab's fold took off it for one group, in tab order. Empty for a tab not built since the reload.
      */
     public static List<ItemStack> members(@Nullable ResourceKey<CreativeModeTab> tab, @Nullable CreativeGroup group) {
         if (tab == null || group == null) return List.of();
@@ -182,9 +162,7 @@ public final class CreativeGroupService {
     }
 
     /**
-     * Whether the group an icon stands for is open in the list a screen is showing. That list is the screen's own view
-     * rather than the tab's, because that is where expanding happens: the tab itself always holds the folded shape, so
-     * a page always opens folded.
+     * Whether the group an icon stands for is open in the list a screen is showing.
      */
     public static boolean isOpen(List<ItemStack> view, ItemStack icon) {
         CreativeGroup group = icon.get(BctDataComponents.CREATIVE_GROUP);
@@ -204,10 +182,8 @@ public final class CreativeGroupService {
     }
 
     /**
-     * Throws away the member tables and rebuilds every tab, which a resource reload needs: a tab list is cached, so a
-     * definition that has just been read - or just been taken away - is not folded into anything until the tab is
-     * built again. Dropping the tables first matters because a member list is only meaningful next to the contents it
-     * was taken from, and those contents are about to be replaced.
+     * Drops the member tables and rebuilds every tab. A member list only means anything next to the contents it came
+     * from, and a cached tab list will not fold a new definition until it is built again.
      */
     public static void onGroupsReloaded() {
         MEMBERS.clear();

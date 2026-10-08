@@ -19,16 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The client half of the groups: the click that opens one.
- *
- * <p>Nothing here has to stop the icon from being taken - the platform's slot lock already refuses that, in every
- * click path and in the quick-craft drag - so the click is only about the fold. Both halves are client only because a
- * tab list, and the screen showing it, exist nowhere else.
+ * The click that opens a group. Nothing here blocks the icon from being taken - the platform's slot lock already
+ * refuses that - so this is only about the fold.
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class CreativeGroupClient {
-    // The picker menu adds its own 45 slots first and the player's hotbar after them. Vanilla tells its own slots
-    // apart by the (private) container they read; the index is what is left of that check.
+    // The picker menu adds its own 45 slots before the player's hotbar.
     private static final int PICKER_SLOTS = 45;
 
     @SubscribeEvent
@@ -41,17 +37,13 @@ public final class CreativeGroupClient {
         CreativeGroup group = clicked.get(BctDataComponents.CREATIVE_GROUP);
         ResourceKey<CreativeModeTab> tabKey = clicked.get(BctDataComponents.CREATIVE_GROUP_TAB);
         if (group == null || tabKey == null) return;
-        // The icon says which tab it was folded in, so the click opens that tab's list: a group a pack folded on
-        // several tabs has one icon per tab, and each of them opens its own.
         if (BuiltInRegistries.CREATIVE_MODE_TAB.getValue(tabKey) == null) return;
-        // Expanded on the screen's own list, not on the tab's: the tab keeps the folded shape, so leaving and coming
-        // back to a page shows every group folded again. The copy is what keeps the refresh below from clearing the
-        // list it is handed.
+        // Toggled on a copy of the screen's own list, not on the tab's: the tab keeps the folded shape, so a page
+        // always opens folded, and the copy is what the refresh below can safely consume.
         ItemPickerMenu menu = screen.getMenu();
         List<ItemStack> view = new ArrayList<>(menu.items);
         if (!CreativeGroupService.toggle(view, tabKey, group, CreativeGroupService.members(tabKey, group))) return;
-        // The screen's own refresh rather than a plain refill: it remembers the row the player scrolled to and maps it
-        // onto the new row count, so opening a group does not throw the list back to the top.
+        // The screen's own refresh, not a plain refill: it keeps the row the player scrolled to.
         ((CreativeModeInventoryScreenAccessor) screen).bct$refreshCurrentTabContents(view);
         event.setCanceled(true);
     }

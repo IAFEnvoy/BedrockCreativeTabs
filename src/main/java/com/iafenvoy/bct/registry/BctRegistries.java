@@ -23,8 +23,7 @@ import java.util.List;
 public final class BctRegistries {
     private static final List<DefaultedRegistry<?>> REGISTRIES = new LinkedList<>();
 
-    public static final DefaultedRegistry<MapCodec<? extends GroupEntry>> GROUP_ENTRY_TYPE =
-            create(BedrockCreativeTabs.MOD_ID + ":item", BctResourceKeys.GROUP_ENTRY_TYPE);
+    public static final DefaultedRegistry<MapCodec<? extends GroupEntry>> GROUP_ENTRY_TYPE = create(BedrockCreativeTabs.MOD_ID + ":item", BctResourceKeys.GROUP_ENTRY_TYPE);
 
     private static <T> DefaultedRegistry<T> create(String defaultKey, ResourceKey<? extends Registry<T>> key) {
         DefaultedRegistry<T> registry = new DefaultedMappedRegistry<>(defaultKey, key, Lifecycle.stable(), false);

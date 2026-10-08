@@ -19,18 +19,15 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * The backing an opened group is painted on: one half-transparent black square under its icon and under every member
- * it is showing, so an expanded group reads as one block. A folded group paints nothing, and that needs no rule of its
- * own - its members are not on the list, and an icon whose members are away is not open.
+ * The backing an opened group is painted on: a translucent black square under its icon and each of its members, so an
+ * expanded group reads as one block. A folded group needs no rule of its own - its members are not on the list.
  *
- * <p>This draws in the background pass rather than in the item decoration for two reasons: the pass sits in its own
- * stratum below everything the screen draws, so the backing is under the items by construction instead of by
- * submission order, and it does not depend on the icon itself being scrolled into view.
+ * <p>Drawn in the background pass so the backing sits under the items by construction rather than by submission order,
+ * and so it does not depend on the icon being scrolled into view.
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class GroupBackingRenderer {
-    // Plain black at a quarter alpha. A constant rather than a texture, because the shade is the whole of it.
-    private static final int BACKING = 0x40000000;
+    private static final int BACKING = 0x40000000; // Black at a quarter alpha.
 
     @SubscribeEvent
     public static void onRender(ScreenEvent.Render.Background event) {
@@ -47,8 +44,8 @@ public final class GroupBackingRenderer {
         }
     }
 
-    // The stacks a group is showing: its icon and its members, and only while it is open. Everything is looked up by
-    // identity, because what a screen holds is the very stacks the fold took off the tab and not copies of them.
+    // The icon and members of every open group. Looked up by identity: a screen holds the very stacks the fold took
+    // off the tab, not copies.
     private static Set<ItemStack> backed(List<ItemStack> view) {
         Set<ItemStack> backed = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack stack : view) {

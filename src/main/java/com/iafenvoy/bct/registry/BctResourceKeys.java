@@ -8,16 +8,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.Registry;
 
 /**
- * The one registry this mod owns: the code registry of entry types other mods add to.
- *
- * <p>It is a code registry rather than a resource one on purpose. The values are codecs, so every side builds the
- * same table from the mods it has loaded and nothing about it has to be read from a pack or sent over the network -
- * which is what lets this mod work with no server at all.
+ * The registry keys this mod owns.
  */
 public final class BctResourceKeys {
     /**
      * Entry types, keyed by what a pack writes in a {@code type} field. A code registry rather than a resource one:
-     * the values are codecs, so every side builds it from the mods it has loaded.
+     * the values are codecs, so every side builds the same table from its own mods and nothing has to be synced.
      */
     public static final ResourceKey<Registry<MapCodec<? extends GroupEntry>>> GROUP_ENTRY_TYPE = create("group_entry_type");
 

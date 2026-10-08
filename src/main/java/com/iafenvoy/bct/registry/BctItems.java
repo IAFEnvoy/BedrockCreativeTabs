@@ -13,10 +13,8 @@ import net.neoforged.neoforge.registries.DeferredRegister.Items;
 import java.util.function.Function;
 
 /**
- * This mod's only item: the blank the fold writes a group's icon into. It is never offered as a plain creative entry -
- * the fold writes it, and the slot lock keeps it from being taken - so it only has to exist for the item decoration
- * and the tooltip to hang off. Its own model is a fully transparent texture, because what a slot shows is the member
- * or the definition's icon drawn on top of it.
+ * This mod's only item: the blank the fold writes a group's icon into. It is never offered as a plain creative entry,
+ * and its model is fully transparent - what a slot shows is the member or the definition's icon drawn on top.
  */
 public final class BctItems {
     public static final Items REGISTRY = DeferredRegister.createItems(BedrockCreativeTabs.MOD_ID);
