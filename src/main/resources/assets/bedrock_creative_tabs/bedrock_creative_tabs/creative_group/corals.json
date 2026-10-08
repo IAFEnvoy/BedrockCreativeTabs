@@ -1,0 +1,9 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:[a-z_]+_coral"
+  },
+  "creative_tabs": [
+    "minecraft:natural_blocks"
+  ]
+}

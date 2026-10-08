@@ -1,0 +1,9 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:tipped_arrow"
+  },
+  "creative_tabs": [
+    "minecraft:combat"
+  ]
+}

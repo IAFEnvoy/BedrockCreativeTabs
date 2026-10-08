@@ -1,0 +1,9 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:firework_rocket"
+  },
+  "creative_tabs": [
+    "minecraft:tools_and_utilities"
+  ]
+}

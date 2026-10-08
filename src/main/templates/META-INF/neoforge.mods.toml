@@ -1,0 +1,41 @@
+
+license="${mod_license}"
+
+[[mods]] #mandatory
+
+modId="${mod_id}" #mandatory
+
+version="${mod_version}" #mandatory
+
+displayName="${mod_name}" #mandatory
+
+logoFile="logo.png"
+
+authors="IAFEnvoy"
+
+description='''
+Configurable bedrock style creative tabs
+'''
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+#[[accessTransformers]]
+#file="META-INF/accesstransformer.cfg"
+
+# Everything this mod does happens while the client builds a creative tab, and a server never builds one, so the mod
+# is client only rather than merely client-sided. These two sides are what say so: the entrypoint is marked client in
+# the mod class, and the dependencies are declared client so that the check itself does not run on a server.
+[[dependencies.${mod_id}]] #optional
+    modId="neoforge" #mandatory
+    type="required" #mandatory
+    versionRange="[${neo_version},)" #mandatory
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="CLIENT"

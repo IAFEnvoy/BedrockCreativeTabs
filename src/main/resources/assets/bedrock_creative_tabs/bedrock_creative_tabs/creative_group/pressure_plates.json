@@ -1,0 +1,10 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:block_tag",
+    "tag": "minecraft:pressure_plates"
+  },
+  "creative_tabs": [
+    "minecraft:building_blocks",
+    "minecraft:redstone_blocks"
+  ]
+}

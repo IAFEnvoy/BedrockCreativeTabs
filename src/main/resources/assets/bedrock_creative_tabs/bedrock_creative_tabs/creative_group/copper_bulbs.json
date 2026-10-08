@@ -1,0 +1,11 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:[a-z_]*copper_bulb$"
+  },
+  "creative_tabs": [
+    "minecraft:building_blocks",
+    "minecraft:functional_blocks",
+    "minecraft:redstone_blocks"
+  ]
+}

@@ -1,0 +1,65 @@
+package com.iafenvoy.bct.render;
+
+import com.iafenvoy.bct.data.CreativeGroup;
+import com.iafenvoy.bct.registry.BctDataComponents;
+import com.iafenvoy.bct.runtime.CreativeGroupService;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * The backing an opened group is painted on: one half-transparent black square under its icon and under every member
+ * it is showing, so an expanded group reads as one block. A folded group paints nothing, and that needs no rule of its
+ * own - its members are not on the list, and an icon whose members are away is not open.
+ *
+ * <p>This draws in the background pass rather than in the item decoration for two reasons: the pass sits in its own
+ * stratum below everything the screen draws, so the backing is under the items by construction instead of by
+ * submission order, and it does not depend on the icon itself being scrolled into view.
+ */
+@EventBusSubscriber(Dist.CLIENT)
+public final class GroupBackingRenderer {
+    // Plain black at a quarter alpha. A constant rather than a texture, because the shade is the whole of it.
+    private static final int BACKING = 0x40000000;
+
+    @SubscribeEvent
+    public static void onRender(ScreenEvent.Render.Background event) {
+        if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        List<ItemStack> view = screen.getMenu().items;
+        Set<ItemStack> backed = backed(view);
+        if (backed.isEmpty()) return;
+        GuiGraphicsExtractor graphics = event.getGuiGraphics();
+        for (Slot slot : screen.getMenu().slots) {
+            if (!backed.contains(slot.getItem())) continue;
+            int x = screen.getLeftPos() + slot.x;
+            int y = screen.getTopPos() + slot.y;
+            graphics.fill(RenderPipelines.GUI, x, y, x + 16, y + 16, BACKING);
+        }
+    }
+
+    // The stacks a group is showing: its icon and its members, and only while it is open. Everything is looked up by
+    // identity, because what a screen holds is the very stacks the fold took off the tab and not copies of them.
+    private static Set<ItemStack> backed(List<ItemStack> view) {
+        Set<ItemStack> backed = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (ItemStack stack : view) {
+            CreativeGroup group = stack.get(BctDataComponents.CREATIVE_GROUP);
+            if (group == null || !CreativeGroupService.isOpen(view, stack)) continue;
+            backed.add(stack);
+            backed.addAll(CreativeGroupService.members(stack.get(BctDataComponents.CREATIVE_GROUP_TAB), group));
+        }
+        return backed;
+    }
+
+    private GroupBackingRenderer() {
+    }
+}

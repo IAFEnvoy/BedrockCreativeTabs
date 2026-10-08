@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.iafenvoy.bct.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": [
+    "CreativeModeInventoryScreenAccessor",
+    "CreativeModeTabsAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

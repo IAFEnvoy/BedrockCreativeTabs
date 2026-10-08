@@ -1,0 +1,7 @@
+{
+  "priority": 1,
+  "entries": "#minecraft:chest_boats",
+  "creative_tabs": [
+    "minecraft:tools_and_utilities"
+  ]
+}

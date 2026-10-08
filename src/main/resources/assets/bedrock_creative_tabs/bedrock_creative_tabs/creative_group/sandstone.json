@@ -1,0 +1,7 @@
+{
+  "priority": 1,
+  "entries": "#c:sandstone/blocks",
+  "creative_tabs": [
+    "minecraft:building_blocks"
+  ]
+}

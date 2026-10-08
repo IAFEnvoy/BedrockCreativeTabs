@@ -1,0 +1,10 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:[a-z_]*minecart"
+  },
+  "creative_tabs": [
+    "minecraft:redstone_blocks",
+    "minecraft:tools_and_utilities"
+  ]
+}

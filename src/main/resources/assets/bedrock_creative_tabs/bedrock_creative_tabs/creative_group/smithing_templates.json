@@ -1,0 +1,9 @@
+{
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:.*_smithing_template"
+  },
+  "creative_tabs": [
+    "minecraft:ingredients"
+  ]
+}
