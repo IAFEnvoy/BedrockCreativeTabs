@@ -4,7 +4,6 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.*;
-import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 
 import java.util.LinkedList;
@@ -12,12 +11,6 @@ import java.util.List;
 import java.util.function.Function;
 
 public final class BctCodecs {
-    /**
-     * Stands in for the id a group has not been given yet. A definition does not write its own id - the loader takes
-     * it from the file name - so anything still carrying this was never filed.
-     */
-    public static final Identifier UNKNOWN_ID = Identifier.fromNamespaceAndPath("bedrock_creative_tabs", "unknown");
-
     /**
      * A list, or the one element it holds.
      */

@@ -1,11 +1,11 @@
 package com.iafenvoy.bct.render;
 
-import com.iafenvoy.bct.data.CreativeGroup;
 import com.iafenvoy.bct.registry.BctDataComponents;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -49,10 +49,10 @@ public final class GroupBackingRenderer {
     private static Set<ItemStack> backed(List<ItemStack> view) {
         Set<ItemStack> backed = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack stack : view) {
-            CreativeGroup group = stack.get(BctDataComponents.CREATIVE_GROUP);
-            if (group == null || !CreativeGroupService.isOpen(view, stack)) continue;
+            Identifier groupId = stack.get(BctDataComponents.CREATIVE_GROUP_ID);
+            if (groupId == null || !CreativeGroupService.isOpen(view, stack)) continue;
             backed.add(stack);
-            backed.addAll(CreativeGroupService.members(stack.get(BctDataComponents.CREATIVE_GROUP_TAB), group));
+            backed.addAll(CreativeGroupService.members(stack.get(BctDataComponents.CREATIVE_GROUP_TAB), groupId));
         }
         return backed;
     }

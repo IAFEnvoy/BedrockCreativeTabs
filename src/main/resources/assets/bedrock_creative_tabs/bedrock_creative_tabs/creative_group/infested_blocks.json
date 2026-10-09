@@ -1,6 +1,9 @@
 {
-  "entries": "#c:cobblestones/infested",
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:infested[a-z_]*"
+  },
   "creative_tabs": [
-    "minecraft:natural_blocks"
+    "minecraft:functional_blocks"
   ]
 }

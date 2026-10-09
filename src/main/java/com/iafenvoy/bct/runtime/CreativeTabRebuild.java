@@ -20,25 +20,14 @@ import java.util.List;
 public final class CreativeTabRebuild {
     public static void rebuild() {
         Minecraft minecraft = Minecraft.getInstance();
-        // No tab list exists before the client has a level, and the one built later reads the new definitions anyway.
         if (minecraft.level == null) return;
-
-        // Unconditional: with the cache left in place the next open would compare equal and skip the rebuild, showing
-        // the old fold for the rest of the session.
         CreativeModeTabsAccessor.bct$setCachedParameters(null);
-
-        // The option gives the same answer a screen would - vanilla ANDs it with the game-master permission, and an
-        // empty operator tab does not display itself, so over-asking cannot leak it.
         CreativeModeTabs.tryRebuildTabContents(minecraft.level.enabledFeatures(), minecraft.options.operatorItemsTab().get(), minecraft.level.registryAccess());
-
-        // A screen holds its own copy of the tab list, built from the definitions that just went away.
-        if (minecraft.screen instanceof CreativeModeInventoryScreen screen) refresh(screen);
-    }
-
-    private static void refresh(CreativeModeInventoryScreen screen) {
-        // Read from the screen's own field: the selected tab outlives any one screen.
-        CreativeModeTab selected = CreativeModeInventoryScreenAccessor.bct$getSelectedTab();
-        ((CreativeModeInventoryScreenAccessor) screen).bct$refreshCurrentTabContents(List.copyOf(selected.getDisplayItems()));
+        if (minecraft.screen instanceof CreativeModeInventoryScreen screen) {
+            // Read from the screen's own field: the selected tab outlives any one screen.
+            CreativeModeTab selected = CreativeModeInventoryScreenAccessor.bct$getSelectedTab();
+            ((CreativeModeInventoryScreenAccessor) screen).bct$refreshCurrentTabContents(List.copyOf(selected.getDisplayItems()));
+        }
     }
 
     private CreativeTabRebuild() {

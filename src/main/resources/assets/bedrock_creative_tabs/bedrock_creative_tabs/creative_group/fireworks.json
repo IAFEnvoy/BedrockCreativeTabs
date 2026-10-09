@@ -4,6 +4,7 @@
     "pattern": "minecraft:firework_rocket"
   },
   "creative_tabs": [
-    "minecraft:tools_and_utilities"
+    "minecraft:tools_and_utilities",
+    "minecraft:combat"
   ]
 }

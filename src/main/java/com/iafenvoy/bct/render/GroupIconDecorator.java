@@ -1,7 +1,6 @@
 package com.iafenvoy.bct.render;
 
 import com.iafenvoy.bct.BedrockCreativeTabs;
-import com.iafenvoy.bct.data.CreativeGroup;
 import com.iafenvoy.bct.registry.BctDataComponents;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
 import net.minecraft.client.Minecraft;
@@ -27,19 +26,17 @@ import java.util.List;
  */
 public enum GroupIconDecorator implements IItemDecorator {
     INSTANCE;
-
     private static final Identifier COLLAPSED = Identifier.fromNamespaceAndPath(BedrockCreativeTabs.MOD_ID, "textures/gui/creative_group_collapsed.png");
     private static final Identifier EXPANDED = Identifier.fromNamespaceAndPath(BedrockCreativeTabs.MOD_ID, "textures/gui/creative_group_expanded.png");
 
     @Override
     public boolean render(@NonNull GuiGraphicsExtractor graphics, @NonNull Font font, ItemStack stack, int x, int y) {
-        CreativeGroup group = stack.get(BctDataComponents.CREATIVE_GROUP);
+        Identifier groupId = stack.get(BctDataComponents.CREATIVE_GROUP_ID);
         ResourceKey<CreativeModeTab> tab = stack.get(BctDataComponents.CREATIVE_GROUP_TAB);
-        if (group == null || tab == null || CreativeGroupService.members(tab, group).isEmpty()) return false;
+        if (groupId == null || tab == null || CreativeGroupService.members(tab, groupId).isEmpty()) return false;
         ItemStack icon = CreativeGroupService.displayIcon(stack);
         if (!icon.isEmpty()) graphics.item(icon, x, y);
-        graphics.blit(RenderPipelines.GUI_TEXTURED, CreativeGroupService.isOpen(shown(), stack) ? EXPANDED : COLLAPSED,
-                x, y, 0.0F, 0.0F, 16, 16, 16, 16);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, CreativeGroupService.isOpen(shown(), stack) ? EXPANDED : COLLAPSED, x, y, 0.0F, 0.0F, 16, 16, 16, 16);
         // Neither draw touches the render state, so nothing has to be reset for the next decorator.
         return false;
     }

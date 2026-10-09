@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 /**
  * Reads the group definitions: one JSON per group at
@@ -53,37 +52,20 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener<
     }
 
     /**
-     * The groups as they stand, which is what the fold walks. Empty before the first reload completes.
+     * The groups as they stand, keyed by the id their file is named after. Empty before the first reload completes.
      */
-    public static Stream<CreativeGroup> groups() {
-        return groups.values().stream();
+    public static Map<Identifier, CreativeGroup> groups() {
+        return groups;
     }
 
     /**
-     * The group that claims the stack, best first: higher {@code priority} wins and a tie keeps load order.
+     * Highest priority first; a tie keeps the order the files were read in.
      */
-    public static Optional<CreativeGroup> groupOf(ItemStack stack) {
-        return groups().filter(group -> group.matches(stack)).min(ORDER);
-    }
-
-    public static final Comparator<CreativeGroup> ORDER = Comparator.comparingInt(CreativeGroup::priority).reversed();
+    public static final Comparator<Map.Entry<Identifier, CreativeGroup>> ORDER = Map.Entry.comparingByValue(Comparator.comparingInt(CreativeGroup::priority).reversed());
 
     @SubscribeEvent
     public static void addReloadListeners(AddClientReloadListenersEvent event) {
         event.addListener(Identifier.fromNamespaceAndPath(BedrockCreativeTabs.MOD_ID, "creative_group"), new CreativeGroupLoader());
-    }
-
-    /**
-     * Stamps the id a file is named after onto the group it held. A definition does not write its own id, so the
-     * loader is the only place the two meet.
-     */
-    @Override
-    protected @NonNull Map<Identifier, CreativeGroup> prepare(@NonNull ResourceManager manager, @NonNull ProfilerFiller profiler) {
-        Map<Identifier, CreativeGroup> read = new LinkedHashMap<>();
-        for (Map.Entry<Identifier, CreativeGroup> entry : super.prepare(manager, profiler).entrySet()) {
-            read.put(entry.getKey(), entry.getValue().withId(entry.getKey()));
-        }
-        return read;
     }
 
     @Override
