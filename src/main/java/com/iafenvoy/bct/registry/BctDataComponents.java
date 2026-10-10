@@ -6,7 +6,7 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -32,7 +32,7 @@ public final class BctDataComponents {
      * The id that group is filed under. It cannot live on {@link CreativeGroup}, which no longer carries one, and the
      * member tables are keyed by it.
      */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Identifier>> CREATIVE_GROUP_ID = register("creative_group_id", Identifier.CODEC);
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ResourceLocation>> CREATIVE_GROUP_ID = register("creative_group_id", ResourceLocation.CODEC);
     /**
      * Which tab this icon was folded in. A group may name several tabs, so the icon says which list a click opens.
      */

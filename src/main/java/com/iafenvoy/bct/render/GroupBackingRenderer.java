@@ -2,10 +2,9 @@ package com.iafenvoy.bct.render;
 
 import com.iafenvoy.bct.registry.BctDataComponents;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -30,17 +29,17 @@ public final class GroupBackingRenderer {
     private static final int BACKING = 0x40000000; // Black at a quarter alpha.
 
     @SubscribeEvent
-    public static void onRender(ScreenEvent.Render.Background event) {
+    public static void onRender(ScreenEvent.Render.Post event) {
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
         List<ItemStack> view = screen.getMenu().items;
         Set<ItemStack> backed = backed(view);
         if (backed.isEmpty()) return;
-        GuiGraphicsExtractor graphics = event.getGuiGraphics();
+        GuiGraphics graphics = event.getGuiGraphics();
         for (Slot slot : screen.getMenu().slots) {
             if (!backed.contains(slot.getItem())) continue;
-            int x = screen.getLeftPos() + slot.x;
-            int y = screen.getTopPos() + slot.y;
-            graphics.fill(RenderPipelines.GUI, x, y, x + 16, y + 16, BACKING);
+            int x = screen.getGuiLeft() + slot.x;
+            int y = screen.getGuiTop() + slot.y;
+            graphics.fill(x, y, x + 16, y + 16, BACKING);
         }
     }
 
@@ -49,7 +48,7 @@ public final class GroupBackingRenderer {
     private static Set<ItemStack> backed(List<ItemStack> view) {
         Set<ItemStack> backed = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack stack : view) {
-            Identifier groupId = stack.get(BctDataComponents.CREATIVE_GROUP_ID);
+            ResourceLocation groupId = stack.get(BctDataComponents.CREATIVE_GROUP_ID);
             if (groupId == null || !CreativeGroupService.isOpen(view, stack)) continue;
             backed.add(stack);
             backed.addAll(CreativeGroupService.members(stack.get(BctDataComponents.CREATIVE_GROUP_TAB), groupId));

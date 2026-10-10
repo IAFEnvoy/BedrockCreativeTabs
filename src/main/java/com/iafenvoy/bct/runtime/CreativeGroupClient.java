@@ -5,7 +5,7 @@ import com.iafenvoy.bct.registry.BctDataComponents;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.ItemPickerMenu;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.CreativeModeTab;
@@ -31,13 +31,13 @@ public final class CreativeGroupClient {
     public static void onClick(ScreenEvent.MouseButtonPressed.Pre event) {
         if (event.getButton() != 0) return;
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
-        Slot slot = screen.getHoveredSlot();
+        Slot slot = screen.getSlotUnderMouse();
         if (slot == null || slot.index >= PICKER_SLOTS) return;
         ItemStack clicked = slot.getItem();
-        Identifier groupId = clicked.get(BctDataComponents.CREATIVE_GROUP_ID);
+        ResourceLocation groupId = clicked.get(BctDataComponents.CREATIVE_GROUP_ID);
         ResourceKey<CreativeModeTab> tabKey = clicked.get(BctDataComponents.CREATIVE_GROUP_TAB);
         if (groupId == null || tabKey == null) return;
-        if (BuiltInRegistries.CREATIVE_MODE_TAB.getValue(tabKey) == null) return;
+        if (BuiltInRegistries.CREATIVE_MODE_TAB.get(tabKey) == null) return;
         // Toggled on a copy of the screen's own list, not on the tab's: the tab keeps the folded shape, so a page
         // always opens folded, and the copy is what the refresh below can safely consume.
         ItemPickerMenu menu = screen.getMenu();

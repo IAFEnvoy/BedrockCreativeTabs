@@ -1,9 +1,6 @@
 package com.iafenvoy.bct.registry;
 
 import com.iafenvoy.bct.BedrockCreativeTabs;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Item.Properties;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -21,9 +18,9 @@ public final class BctItems {
 
     public static final DeferredItem<Item> GROUP = register("group", properties -> new Item(properties.stacksTo(1)));
 
+    // 1.21.1 builds the Properties for us, so the item id comes off the registry rather than being written in.
     public static <T extends Item> DeferredItem<T> register(String path, Function<Properties, T> factory) {
-        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(BedrockCreativeTabs.MOD_ID, path));
-        return REGISTRY.register(path, () -> factory.apply(new Properties().setId(key)));
+        return REGISTRY.registerItem(path, factory);
     }
 
     private BctItems() {

@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "com.iafenvoy.bct.mixin",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
     "CreativeModeInventoryScreenAccessor",

@@ -4,9 +4,11 @@ import com.iafenvoy.bct.BedrockCreativeTabs;
 import com.iafenvoy.bct.api.GroupEntry;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
 import com.mojang.logging.LogUtils;
-import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.Identifier;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -15,8 +17,8 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
-import org.jspecify.annotations.NonNull;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -35,47 +37,52 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link CreativeGroupService#onGroupsReloaded()}.
  */
 @EventBusSubscriber(Dist.CLIENT)
-public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener<CreativeGroup> {
+public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener {
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final String DIRECTORY = BedrockCreativeTabs.MOD_ID + "/creative_group";
-    private static final FileToIdConverter LISTER = FileToIdConverter.json(DIRECTORY);
+    private static final Gson GSON = new Gson();
 
     // In load order, keyed by the file name it came from. Swapped wholesale on reload, never mutated in place.
-    private static volatile Map<Identifier, CreativeGroup> groups = Map.of();
+    private static volatile Map<ResourceLocation, CreativeGroup> groups = Map.of();
     // Per entry, what the tabs built so far have said about it. Dropped with the table it describes.
     private static final Map<EntryKey, EntryCheck> entryChecks = new ConcurrentHashMap<>();
     // Set once every entry has been judged against every tab its group names.
     private static volatile boolean fullyChecked = true;
 
     public CreativeGroupLoader() {
-        super(CreativeGroup.CODEC, LISTER);
+        super(GSON, DIRECTORY);
     }
 
     /**
      * The groups as they stand, keyed by the id their file is named after. Empty before the first reload completes.
      */
-    public static Map<Identifier, CreativeGroup> groups() {
+    public static Map<ResourceLocation, CreativeGroup> groups() {
         return groups;
     }
 
     /**
      * Highest priority first; a tie keeps the order the files were read in.
      */
-    public static final Comparator<Map.Entry<Identifier, CreativeGroup>> ORDER = Map.Entry.comparingByValue(Comparator.comparingInt(CreativeGroup::priority).reversed());
+    public static final Comparator<Map.Entry<ResourceLocation, CreativeGroup>> ORDER = Map.Entry.comparingByValue(Comparator.comparingInt(CreativeGroup::priority).reversed());
 
     @SubscribeEvent
-    public static void addReloadListeners(AddClientReloadListenersEvent event) {
-        event.addListener(Identifier.fromNamespaceAndPath(BedrockCreativeTabs.MOD_ID, "creative_group"), new CreativeGroupLoader());
+    public static void addReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(new CreativeGroupLoader());
     }
 
     @Override
-    protected void apply(Map<Identifier, CreativeGroup> prepared, @NonNull ResourceManager manager, @NonNull ProfilerFiller profiler) {
+    protected void apply(Map<ResourceLocation, JsonElement> prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
         // Replace and reset only. This runs before the client has a level, so nothing here may touch the item
         // registry; the definitions are judged later, against real tab contents.
-        groups = Map.copyOf(prepared);
+        // 1.21.1 hands over raw JSON, so a file that fails to parse is skipped here rather than taking the rest down.
+        Map<ResourceLocation, CreativeGroup> parsed = new LinkedHashMap<>();
+        prepared.forEach((id, json) -> CreativeGroup.CODEC.parse(JsonOps.INSTANCE, json)
+                .resultOrPartial(error -> LOGGER.error("Skipping bedrock creative group {}: {}", id, error))
+                .ifPresent(group -> parsed.put(id, group)));
+        groups = Map.copyOf(parsed);
         entryChecks.clear();
         fullyChecked = false;
-        LOGGER.info("Loaded {} bedrock creative group(s)", prepared.size());
+        LOGGER.info("Loaded {} bedrock creative group(s)", parsed.size());
         CreativeGroupService.onGroupsReloaded();
     }
 
@@ -93,7 +100,7 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener<
     public static void checkAgainst(ResourceKey<CreativeModeTab> tabKey, Collection<ItemStack> contents) {
         if (fullyChecked) return;
         boolean everyEntryJudged = true;
-        for (Map.Entry<Identifier, CreativeGroup> group : groups.entrySet()) {
+        for (Map.Entry<ResourceLocation, CreativeGroup> group : groups.entrySet()) {
             CreativeGroup value = group.getValue();
             if (!value.creativeTabs().contains(tabKey)) continue;
             Set<ResourceKey<CreativeModeTab>> allTabs = Set.copyOf(value.creativeTabs());
@@ -115,7 +122,7 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener<
         fullyChecked = everyEntryJudged;
     }
 
-    private record EntryKey(Identifier group, int index) {
+    private record EntryKey(ResourceLocation group, int index) {
     }
 
     private static final class EntryCheck {

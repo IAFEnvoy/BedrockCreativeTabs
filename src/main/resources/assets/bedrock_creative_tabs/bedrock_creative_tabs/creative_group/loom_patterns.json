@@ -1,5 +1,8 @@
 {
-  "entries": "#minecraft:loom_patterns",
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": ".+:.*_banner_pattern$"
+  },
   "creative_tabs": [
     "minecraft:ingredients"
   ]

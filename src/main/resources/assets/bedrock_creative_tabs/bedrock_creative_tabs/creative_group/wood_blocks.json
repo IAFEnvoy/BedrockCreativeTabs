@@ -1,5 +1,14 @@
 {
-  "entries": "#c:natural_woods",
+  "entries": [
+    {
+      "type": "bedrock_creative_tabs:regex",
+      "pattern": ".+:.*_wood$"
+    },
+    {
+      "type": "bedrock_creative_tabs:regex",
+      "pattern": ".+:.*_hyphae$"
+    }
+  ],
   "creative_tabs": [
     "minecraft:building_blocks"
   ]

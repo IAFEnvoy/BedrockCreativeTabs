@@ -6,20 +6,18 @@ import com.iafenvoy.bct.registry.BctDataComponents;
 import com.iafenvoy.bct.registry.BctItems;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Unit;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTab.TabVisibility;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -40,7 +38,7 @@ import java.util.*;
 public final class CreativeGroupService {
     // Tab -> group id -> the stacks that tab's fold took off it, in tab order. Rebuilt whenever that tab is built, so
     // nothing in here can outlive the contents it describes; a group whose definition went away drops out with them.
-    private static final Map<ResourceKey<CreativeModeTab>, Map<Identifier, List<ItemStack>>> MEMBERS = new LinkedHashMap<>();
+    private static final Map<ResourceKey<CreativeModeTab>, Map<ResourceLocation, List<ItemStack>>> MEMBERS = new LinkedHashMap<>();
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onBuildContents(BuildCreativeModeTabContentsEvent event) {
@@ -59,29 +57,27 @@ public final class CreativeGroupService {
 
         // Filter by tab before picking a winner, not after: a group from another tab would otherwise win on priority,
         // then be refused here, and the stack would be dropped rather than folded into the group that could take it.
-        List<Map.Entry<Identifier, CreativeGroup>> candidates = CreativeGroupLoader.groups().entrySet().stream()
+        List<Map.Entry<ResourceLocation, CreativeGroup>> candidates = CreativeGroupLoader.groups().entrySet().stream()
                 .filter(group -> group.getValue().creativeTabs().contains(tabKey))
                 .toList();
-        Map<Identifier, CreativeGroup> winners = new LinkedHashMap<>();
-        Map<Identifier, List<ItemStack>> folded = new LinkedHashMap<>();
+        Map<ResourceLocation, CreativeGroup> winners = new LinkedHashMap<>();
+        Map<ResourceLocation, List<ItemStack>> folded = new LinkedHashMap<>();
         for (ItemStack stack : event.getParentEntries()) {
             // A rebuild must not fold the icon a previous build wrote.
             if (stack.is(BctItems.GROUP.get())) continue;
-            Optional<Map.Entry<Identifier, CreativeGroup>> found = candidates.stream()
+            Optional<Map.Entry<ResourceLocation, CreativeGroup>> found = candidates.stream()
                     .filter(group -> group.getValue().matches(stack)).min(CreativeGroupLoader.ORDER);
             if (found.isEmpty()) continue;
-            Identifier id = found.get().getKey();
+            ResourceLocation id = found.get().getKey();
             winners.putIfAbsent(id, found.get().getValue());
-            folded.computeIfAbsent(id, _ -> new ArrayList<>()).add(stack);
+            folded.computeIfAbsent(id, key -> new ArrayList<>()).add(stack);
         }
 
-        for (Map.Entry<Identifier, List<ItemStack>> entry : folded.entrySet()) {
+        for (Map.Entry<ResourceLocation, List<ItemStack>> entry : folded.entrySet()) {
             List<ItemStack> members = entry.getValue();
             // Insert before removing: moving an entry refuses a target that is already gone.
             event.insertBefore(members.getFirst(), icon(tabKey, entry.getKey(), winners.get(entry.getKey())), TabVisibility.PARENT_TAB_ONLY);
-            Set<ItemStack> removing = Collections.newSetFromMap(new IdentityHashMap<>());
-            removing.addAll(members);
-            event.removeIf(removing::contains, TabVisibility.PARENT_TAB_ONLY);
+            for (ItemStack member : members) event.remove(member, TabVisibility.PARENT_TAB_ONLY);
             MEMBERS.get(tabKey).put(entry.getKey(), List.copyOf(members));
         }
     }
@@ -91,7 +87,7 @@ public final class CreativeGroupService {
      * click path in the creative screen asks {@code Slot#mayPickup} first, so the icon cannot be picked up even when
      * nothing here runs.
      */
-    public static ItemStack icon(ResourceKey<CreativeModeTab> tab, Identifier id, CreativeGroup group) {
+    public static ItemStack icon(ResourceKey<CreativeModeTab> tab, ResourceLocation id, CreativeGroup group) {
         ItemStack icon = new ItemStack(BctItems.GROUP.get());
         icon.set(BctDataComponents.CREATIVE_GROUP, group);
         icon.set(BctDataComponents.CREATIVE_GROUP_ID, id);
@@ -106,7 +102,7 @@ public final class CreativeGroupService {
      * the tab's - expanding is a property of the visit, so a page always opens folded.
      */
     public static boolean toggle(Collection<ItemStack> display, ResourceKey<CreativeModeTab> tab,
-                                 Identifier groupId, List<ItemStack> members) {
+                                 ResourceLocation groupId, List<ItemStack> members) {
         if (members.isEmpty()) return false;
         Set<ItemStack> folded = Collections.newSetFromMap(new IdentityHashMap<>());
         folded.addAll(members);
@@ -131,14 +127,13 @@ public final class CreativeGroupService {
     }
 
     /**
-     * What a group is drawn as on the tab its icon carries: its written icon, or the first member the fold found. A
-     * template that no longer builds a valid stack counts as "writes none", matching {@code ItemStackTemplate#create}.
+     * What a group is drawn as on the tab its icon carries: its written icon, or the first member the fold found.
      */
     public static ItemStack displayIcon(ItemStack icon) {
         CreativeGroup group = icon.get(BctDataComponents.CREATIVE_GROUP);
-        Identifier id = icon.get(BctDataComponents.CREATIVE_GROUP_ID);
+        ResourceLocation id = icon.get(BctDataComponents.CREATIVE_GROUP_ID);
         if (group == null || id == null) return ItemStack.EMPTY;
-        ItemStack written = group.icon().map(ItemStackTemplate::create).orElse(ItemStack.EMPTY);
+        ItemStack written = group.icon().orElse(ItemStack.EMPTY);
         if (!written.isEmpty()) return written;
         List<ItemStack> members = members(icon.get(BctDataComponents.CREATIVE_GROUP_TAB), id);
         return members.isEmpty() ? ItemStack.EMPTY : members.getFirst();
@@ -147,7 +142,7 @@ public final class CreativeGroupService {
     /**
      * The stacks one tab's fold took off it for one group, in tab order. Empty for a tab not built since the reload.
      */
-    public static List<ItemStack> members(@Nullable ResourceKey<CreativeModeTab> tab, @Nullable Identifier groupId) {
+    public static List<ItemStack> members(ResourceKey<CreativeModeTab> tab, ResourceLocation groupId) {
         if (tab == null || groupId == null) return List.of();
         return MEMBERS.getOrDefault(tab, Map.of()).getOrDefault(groupId, List.of());
     }
@@ -156,7 +151,7 @@ public final class CreativeGroupService {
      * Whether the group an icon stands for is open in the list a screen is showing.
      */
     public static boolean isOpen(List<ItemStack> view, ItemStack icon) {
-        Identifier id = icon.get(BctDataComponents.CREATIVE_GROUP_ID);
+        ResourceLocation id = icon.get(BctDataComponents.CREATIVE_GROUP_ID);
         ResourceKey<CreativeModeTab> tab = icon.get(BctDataComponents.CREATIVE_GROUP_TAB);
         if (id == null || tab == null) return false;
         List<ItemStack> members = members(tab, id);
@@ -166,7 +161,7 @@ public final class CreativeGroupService {
     /**
      * Whether a stack is the icon of one group on one tab, which is how a click finds the entry to open next to.
      */
-    public static boolean isIconOf(ItemStack stack, ResourceKey<CreativeModeTab> tab, Identifier groupId) {
+    public static boolean isIconOf(ItemStack stack, ResourceKey<CreativeModeTab> tab, ResourceLocation groupId) {
         return stack.is(BctItems.GROUP.get())
                 && tab.equals(stack.get(BctDataComponents.CREATIVE_GROUP_TAB))
                 && groupId.equals(stack.get(BctDataComponents.CREATIVE_GROUP_ID));

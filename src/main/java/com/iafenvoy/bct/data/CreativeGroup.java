@@ -10,18 +10,17 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Optional;
 
-public record CreativeGroup(List<GroupEntry> entries, Optional<ItemStackTemplate> icon,
+public record CreativeGroup(List<GroupEntry> entries, Optional<ItemStack> icon,
                             List<ResourceKey<CreativeModeTab>> creativeTabs, int priority) {
     public static final int DEFAULT_PRIORITY = 0;
     public static final Codec<List<ResourceKey<CreativeModeTab>>> TABS_CODEC = ResourceKey.codec(Registries.CREATIVE_MODE_TAB).listOf();
     public static final Codec<CreativeGroup> CODEC = RecordCodecBuilder.<CreativeGroup>create(i -> i.group(
             BctCodecs.singleOrList(GroupEntry.CODEC).fieldOf("entries").forGetter(CreativeGroup::entries),
-            ItemStackTemplate.CODEC.optionalFieldOf("icon").forGetter(CreativeGroup::icon),
+            ItemStack.CODEC.optionalFieldOf("icon").forGetter(CreativeGroup::icon),
             TABS_CODEC.optionalFieldOf("creative_tabs", List.of()).forGetter(CreativeGroup::creativeTabs),
             Codec.INT.optionalFieldOf("priority", DEFAULT_PRIORITY).forGetter(CreativeGroup::priority)
     ).apply(i, CreativeGroup::new)).validate(CreativeGroup::validate);

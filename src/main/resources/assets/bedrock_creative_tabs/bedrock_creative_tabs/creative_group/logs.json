@@ -1,8 +1,14 @@
 {
-  "entries": {
-    "type": "bedrock_creative_tabs:block_tag",
-    "tag": "c:natural_logs"
-  },
+  "entries": [
+    {
+      "type": "bedrock_creative_tabs:regex",
+      "pattern": ".+:.*_log$"
+    },
+    {
+      "type": "bedrock_creative_tabs:regex",
+      "pattern": ".+:.*_stem$"
+    }
+  ],
   "creative_tabs": [
     "minecraft:building_blocks",
     "minecraft:natural_blocks"

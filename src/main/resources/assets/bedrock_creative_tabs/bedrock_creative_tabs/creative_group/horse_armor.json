@@ -1,5 +1,8 @@
 {
-  "entries": "#c:armors/horse",
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": ".+:.*_horse_armor$"
+  },
   "creative_tabs": [
     "minecraft:combat"
   ]
