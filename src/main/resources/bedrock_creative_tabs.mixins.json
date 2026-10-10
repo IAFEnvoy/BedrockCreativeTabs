@@ -1,7 +1,8 @@
 {
   "required": true,
+  "minVersion": "0.8.5",
   "package": "com.iafenvoy.bct.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [],
   "client": [
     "CreativeModeInventoryScreenAccessor",
@@ -12,5 +13,6 @@
   },
   "overwrites": {
     "requireAnnotations": true
-  }
+  },
+  "refmap": "bedrock_creative_tabs-refmap.json"
 }

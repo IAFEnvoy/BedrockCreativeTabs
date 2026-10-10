@@ -6,11 +6,10 @@ import com.iafenvoy.bct.registry.BctRegistries;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.function.Function;
 
@@ -18,7 +17,7 @@ import java.util.function.Function;
  * One way of saying "this stack belongs to the group". A group folds every stack any of its entries accepts.
  *
  * <p>Five types ship: {@code item} (field {@code id}), {@code item_tag} (field {@code tag}), {@code block_tag} (field
- * {@code tag}), {@code has_component} (field {@code component}) and {@code regex} (field {@code pattern}). The first
+ * {@code tag}), {@code has_nbt_keys} (field {@code keys}) and {@code regex} (field {@code pattern}). The first
  * two also accept a shorthand - a bare item id, or a {@code #}-prefixed item tag - so a pack need not write an object
  * for the common cases.
  *
@@ -31,20 +30,19 @@ public interface GroupEntry {
     /**
      * The typed form, dispatched on the {@code type} field.
      *
-     * <p>Resolved per call, not captured: the type registry is empty when {@code NewRegistryEvent} creates it and is
-     * filled later by {@code RegisterEvent}, so a codec cached before that would read an empty registry.
+     * <p>The registry is read on every call rather than captured: it does not exist yet when this interface is
+     * initialised, so a codec built from it eagerly would dispatch against nothing.
      */
-    Codec<GroupEntry> TYPED_CODEC = BctRegistries.GROUP_ENTRY_TYPE.byNameCodec().dispatch("type", GroupEntry::codec, Function.identity());
+    Codec<GroupEntry> TYPED_CODEC = BctRegistries.groupEntryTypes().getCodec().dispatch("type", GroupEntry::codec, Function.identity());
     /**
      * The shorthand the two item-side built-ins accept: a bare item id, or a hashed item tag.
      */
-    Codec<GroupEntry> SHORTCUT_CODEC = Codec.either(BuiltInRegistries.ITEM.byNameCodec(), TagKey.hashedCodec(Registries.ITEM)).xmap(
+    Codec<GroupEntry> SHORTCUT_CODEC = Codec.either(ForgeRegistries.ITEMS.getCodec(), TagKey.hashedCodec(Registries.ITEM)).xmap(
             either -> either.map(ItemEntry::new, ItemTagEntry::new),
-            entry -> switch (entry) {
-                case ItemEntry(Item item) -> Either.left(item);
-                case ItemTagEntry(TagKey<Item> tag) -> Either.right(tag);
-                default ->
-                        throw new IllegalArgumentException("Only the item and item tag entries have a shorthand form");
+            entry -> {
+                if (entry instanceof ItemEntry itemEntry) return Either.left(itemEntry.item());
+                if (entry instanceof ItemTagEntry itemTagEntry) return Either.right(itemTagEntry.tag());
+                throw new IllegalArgumentException("Only the item and item tag entries have a shorthand form");
             });
     /**
      * Either form. A JSON object cannot read as a string, so the shorthand never shadows the typed form.
@@ -65,5 +63,5 @@ public interface GroupEntry {
     /**
      * This entry's own codec, which is what the {@code type} field dispatches on.
      */
-    MapCodec<? extends GroupEntry> codec();
+    Codec<? extends GroupEntry> codec();
 }

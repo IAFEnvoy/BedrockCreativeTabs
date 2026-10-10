@@ -1,5 +1,5 @@
 {
-  "entries": "#minecraft:chest_armor",
+  "entries": "#forge:armors/chestplates",
   "creative_tabs": [
     "minecraft:combat"
   ]

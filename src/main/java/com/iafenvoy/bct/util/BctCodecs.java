@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.*;
+import com.mojang.serialization.DataResult.PartialResult;
 import org.slf4j.Logger;
 
 import java.util.LinkedList;
@@ -15,7 +16,7 @@ public final class BctCodecs {
      * A list, or the one element it holds.
      */
     public static <T> Codec<List<T>> singleOrList(Codec<T> element) {
-        return Codec.either(element, tolerantList(element)).xmap(either -> either.map(List::of, Function.identity()), list -> list.size() == 1 ? Either.left(list.getFirst()) : Either.right(list));
+        return Codec.either(element, tolerantList(element)).xmap(either -> either.map(List::of, Function.identity()), list -> list.size() == 1 ? Either.left(list.get(0)) : Either.right(list));
     }
 
     /**
@@ -37,7 +38,7 @@ public final class BctCodecs {
                 List<E> elements = new LinkedList<>();
                 stream.accept(value -> {
                     DataResult<Pair<E, T>> result = this.elementCodec.decode(ops, value);
-                    result.result().ifPresentOrElse(pair -> elements.add(pair.getFirst()), () -> LOGGER.warn("Ignoring invalid list element: {}", result.error().orElseThrow().message()));
+                    result.result().ifPresentOrElse(pair -> elements.add(pair.getFirst()), () -> LOGGER.warn("Ignoring invalid list element: {}", result.error().map(PartialResult::message).orElse("unknown")));
                 });
                 return DataResult.success(Pair.of(List.copyOf(elements), ops.empty()), Lifecycle.stable());
             });
@@ -48,8 +49,9 @@ public final class BctCodecs {
             ListBuilder<T> builder = ops.listBuilder();
             for (E element : input) {
                 DataResult<T> result = this.elementCodec.encodeStart(ops, element);
-                if (result.isSuccess()) builder.add(result);
-                else LOGGER.warn("Failed to encode element: {}, error: {}", element, result.error().orElseThrow());
+                // 1.20.1's DataFixerUpper has no isSuccess, so success is "carries a result".
+                if (result.result().isPresent()) builder.add(result);
+                else LOGGER.warn("Failed to encode element: {}, error: {}", element, result.error().map(PartialResult::message).orElse("unknown"));
             }
             return builder.build(prefix);
         }

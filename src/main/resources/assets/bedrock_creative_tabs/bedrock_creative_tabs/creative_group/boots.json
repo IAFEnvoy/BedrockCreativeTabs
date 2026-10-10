@@ -1,5 +1,5 @@
 {
-  "entries": "#minecraft:foot_armor",
+  "entries": "#forge:armors/boots",
   "creative_tabs": [
     "minecraft:combat"
   ]

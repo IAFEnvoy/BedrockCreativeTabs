@@ -1,7 +1,7 @@
 package com.iafenvoy.bct.data.entry;
 
 import com.iafenvoy.bct.api.GroupEntry;
-import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
@@ -15,7 +15,7 @@ import net.minecraft.world.level.block.Block;
  * <p>Use only where the tag exists on the block side alone; prefer {@link ItemTagEntry} where both sides have it.
  */
 public record BlockTagEntry(TagKey<Block> tag) implements GroupEntry {
-    public static final MapCodec<BlockTagEntry> CODEC = TagKey.codec(Registries.BLOCK).fieldOf("tag").xmap(BlockTagEntry::new, BlockTagEntry::tag);
+    public static final Codec<BlockTagEntry> CODEC = TagKey.codec(Registries.BLOCK).xmap(BlockTagEntry::new, BlockTagEntry::tag).fieldOf("tag").codec();
 
     @Override
     public boolean matches(ItemStack stack) {
@@ -29,7 +29,7 @@ public record BlockTagEntry(TagKey<Block> tag) implements GroupEntry {
     }
 
     @Override
-    public MapCodec<BlockTagEntry> codec() {
+    public Codec<BlockTagEntry> codec() {
         return CODEC;
     }
 }

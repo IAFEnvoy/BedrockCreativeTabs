@@ -1,17 +1,19 @@
 package com.iafenvoy.bct.data.entry;
 
 import com.iafenvoy.bct.api.GroupEntry;
-import com.mojang.serialization.MapCodec;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.mojang.serialization.Codec;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
+
+import java.util.Objects;
 
 /**
  * One item, by id: {@code {"type": "item", "id": "minecraft:oak_planks"}} or the bare id as shorthand. Claims every
  * stack of it, whatever components it carries.
  */
 public record ItemEntry(Item item) implements GroupEntry {
-    public static final MapCodec<ItemEntry> CODEC = BuiltInRegistries.ITEM.byNameCodec().fieldOf("id").xmap(ItemEntry::new, ItemEntry::item);
+    public static final Codec<ItemEntry> CODEC = ForgeRegistries.ITEMS.getCodec().xmap(ItemEntry::new, ItemEntry::item).fieldOf("id").codec();
 
     @Override
     public boolean matches(ItemStack stack) {
@@ -20,11 +22,11 @@ public record ItemEntry(Item item) implements GroupEntry {
 
     @Override
     public String describe() {
-        return BuiltInRegistries.ITEM.getKey(this.item).toString();
+        return Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(this.item)).toString();
     }
 
     @Override
-    public MapCodec<ItemEntry> codec() {
+    public Codec<ItemEntry> codec() {
         return CODEC;
     }
 }

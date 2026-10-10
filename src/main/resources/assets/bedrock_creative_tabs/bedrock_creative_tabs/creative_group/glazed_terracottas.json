@@ -1,5 +1,8 @@
 {
-  "entries": "#c:glazed_terracottas",
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:.*_glazed_terracotta"
+  },
   "creative_tabs": [
     "minecraft:colored_blocks"
   ]

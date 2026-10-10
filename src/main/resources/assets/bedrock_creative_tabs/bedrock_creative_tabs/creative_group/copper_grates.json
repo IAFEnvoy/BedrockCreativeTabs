@@ -1,9 +1,0 @@
-{
-  "entries": {
-    "type": "bedrock_creative_tabs:regex",
-    "pattern": "minecraft:[a-z_]*copper_grate"
-  },
-  "creative_tabs": [
-    "minecraft:building_blocks"
-  ]
-}

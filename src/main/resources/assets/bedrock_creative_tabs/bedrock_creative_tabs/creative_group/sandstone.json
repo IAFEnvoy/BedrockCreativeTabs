@@ -1,6 +1,6 @@
 {
   "priority": 1,
-  "entries": "#c:sandstone/blocks",
+  "entries": "#forge:sandstone",
   "creative_tabs": [
     "minecraft:building_blocks"
   ]

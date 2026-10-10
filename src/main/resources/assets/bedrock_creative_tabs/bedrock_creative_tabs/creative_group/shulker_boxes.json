@@ -1,5 +1,8 @@
 {
-  "entries": "#c:shulker_boxes",
+  "entries": {
+    "type": "bedrock_creative_tabs:block_tag",
+    "tag": "minecraft:shulker_boxes"
+  },
   "creative_tabs": [
     "minecraft:colored_blocks",
     "minecraft:functional_blocks"

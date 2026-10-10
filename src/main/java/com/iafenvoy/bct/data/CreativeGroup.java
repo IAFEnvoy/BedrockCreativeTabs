@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 public record CreativeGroup(List<GroupEntry> entries, Optional<ItemStack> icon,
                             List<ResourceKey<CreativeModeTab>> creativeTabs, int priority) {
@@ -23,7 +24,7 @@ public record CreativeGroup(List<GroupEntry> entries, Optional<ItemStack> icon,
             ItemStack.CODEC.optionalFieldOf("icon").forGetter(CreativeGroup::icon),
             TABS_CODEC.optionalFieldOf("creative_tabs", List.of()).forGetter(CreativeGroup::creativeTabs),
             Codec.INT.optionalFieldOf("priority", DEFAULT_PRIORITY).forGetter(CreativeGroup::priority)
-    ).apply(i, CreativeGroup::new)).validate(CreativeGroup::validate);
+    ).apply(i, CreativeGroup::new)).comapFlatMap(CreativeGroup::validate, Function.identity());
 
     /**
      * Whether any of this group's entries claims the stack.

@@ -1,28 +1,28 @@
 package com.iafenvoy.bct.runtime;
 
 import com.iafenvoy.bct.mixin.CreativeModeInventoryScreenAccessor;
-import com.iafenvoy.bct.registry.BctDataComponents;
+import com.iafenvoy.bct.util.BctIconTags;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.ItemPickerMenu;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The click that opens a group. Nothing here blocks the icon from being taken - the platform's slot lock already
+ * The click that opens a group. Nothing here blocks the icon from being taken - the platform's own slot lock already
  * refuses that - so this is only about the fold.
  */
-@EventBusSubscriber(Dist.CLIENT)
+@Mod.EventBusSubscriber(value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class CreativeGroupClient {
     // The picker menu adds its own 45 slots before the player's hotbar.
     private static final int PICKER_SLOTS = 45;
@@ -34,8 +34,8 @@ public final class CreativeGroupClient {
         Slot slot = screen.getSlotUnderMouse();
         if (slot == null || slot.index >= PICKER_SLOTS) return;
         ItemStack clicked = slot.getItem();
-        ResourceLocation groupId = clicked.get(BctDataComponents.CREATIVE_GROUP_ID);
-        ResourceKey<CreativeModeTab> tabKey = clicked.get(BctDataComponents.CREATIVE_GROUP_TAB);
+        ResourceLocation groupId = BctIconTags.groupId(clicked);
+        ResourceKey<CreativeModeTab> tabKey = BctIconTags.tab(clicked);
         if (groupId == null || tabKey == null) return;
         if (BuiltInRegistries.CREATIVE_MODE_TAB.get(tabKey) == null) return;
         // Toggled on a copy of the screen's own list, not on the tab's: the tab keeps the folded shape, so a page

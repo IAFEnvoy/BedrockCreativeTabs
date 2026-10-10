@@ -1,5 +1,8 @@
 {
-  "entries": "#c:concrete_powders",
+  "entries": {
+    "type": "bedrock_creative_tabs:regex",
+    "pattern": "minecraft:.*_concrete_powder"
+  },
   "creative_tabs": [
     "minecraft:colored_blocks"
   ]

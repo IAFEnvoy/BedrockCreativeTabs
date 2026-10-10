@@ -1,5 +1,5 @@
 {
-  "entries": "#minecraft:head_armor",
+  "entries": "#forge:armors/helmets",
   "creative_tabs": [
     "minecraft:combat"
   ]

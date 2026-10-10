@@ -1,5 +1,5 @@
 {
-  "entries": "#minecraft:leg_armor",
+  "entries": "#forge:armors/leggings",
   "creative_tabs": [
     "minecraft:combat"
   ]

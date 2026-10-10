@@ -14,10 +14,10 @@ import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>A reload only replaces this table; the tab lists are rebuilt separately, in
  * {@link CreativeGroupService#onGroupsReloaded()}.
  */
-@EventBusSubscriber(Dist.CLIENT)
+@Mod.EventBusSubscriber(value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener {
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final String DIRECTORY = BedrockCreativeTabs.MOD_ID + "/creative_group";
@@ -74,7 +74,8 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
     protected void apply(Map<ResourceLocation, JsonElement> prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
         // Replace and reset only. This runs before the client has a level, so nothing here may touch the item
         // registry; the definitions are judged later, against real tab contents.
-        // 1.21.1 hands over raw JSON, so a file that fails to parse is skipped here rather than taking the rest down.
+        // The listener hands over raw JSON, so a file that fails to parse is skipped here rather than taking the rest
+        // down with it.
         Map<ResourceLocation, CreativeGroup> parsed = new LinkedHashMap<>();
         prepared.forEach((id, json) -> CreativeGroup.CODEC.parse(JsonOps.INSTANCE, json)
                 .resultOrPartial(error -> LOGGER.error("Skipping bedrock creative group {}: {}", id, error))
