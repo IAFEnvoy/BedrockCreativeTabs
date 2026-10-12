@@ -222,6 +222,14 @@ public final class BctPickerOverlay {
         int mouseX = (int) event.getMouseX();
         int mouseY = (int) event.getMouseY();
 
+        // A click anywhere but the search box or its match button ends the typing session, so the mode's shortcut
+        // keys are live again. The click still falls through to the picker/vanilla, which is what selects items.
+        if (searchBox != null && searchBox.isFocused()
+                && !inRect(mouseX, mouseY, COL_X, SEARCH_Y, COL_W, SEARCH_H)
+                && !inRect(mouseX, mouseY, COL_X, MATCH_ROW_Y, COL_W, ROW_H)) {
+            blur(searchBox);
+        }
+
         if (renameOpen) {
             int x = renamePanelX;
             int y = renamePanelY;
@@ -382,6 +390,10 @@ public final class BctPickerOverlay {
                 if (BctEditorState.CHOSEN.add(id.toString())) added++;
             }
         }
+        // End the typing session: release the box so the keyboard goes back to the mode's shortcuts. Without this
+        // the search box kept focus after selecting, and the next G/C/R a player pressed was typed into it (the mode
+        // keys stand down while a box is focused) instead of folding a group.
+        blur(searchBox);
         minecraft().player.sendOverlayMessage(Component.literal(
                 "选中匹配 “" + query + "” 的 " + added + " 个物品（共 " + BctEditorState.CHOSEN.size() + " 个）"));
     }
@@ -399,6 +411,14 @@ public final class BctPickerOverlay {
 
     private static boolean inRect(int mx, int my, int x, int y, int w, int h) {
         return mx >= x && mx < x + w && my >= y && my < y + h;
+    }
+
+    /** Drops focus from a box, so the mode's shortcut keys answer again. */
+    private static void blur(EditBox box) {
+        if (box == null) return;
+        box.setFocused(false);
+        Screen screen = minecraft().screen;
+        if (screen != null && screen.getFocused() == box) screen.setFocused(null);
     }
 
     /**

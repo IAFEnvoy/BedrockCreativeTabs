@@ -189,8 +189,13 @@ public final class BctNames {
 
     /**
      * The Chinese fragment repeated across the most members' display names - the game's own words, so it holds for
-     * any mod: 木剑/石剑/铁剑 -&gt; 剑, 存储抽屉/抽屉 -&gt; 抽屉. Coverage decides (a straggler cannot erase the
-     * family word), a trailing candidate wins ties (the family word usually ends the name), then the longer one.
+     * any mod: 木剑/石剑/铁剑 -&gt; 剑, 铜牛排/铁牛排/金牛排 -&gt; 牛排, 存储抽屉/抽屉 -&gt; 抽屉.
+     *
+     * <p>Coverage is only a <b>gate</b>, and among the fragments that clear it the <b>longest</b> wins. That is the
+     * whole trick: an earlier version returned as soon as a fragment was shared by <em>every</em> member, so one
+     * outlier collapsed the name to its last character - a set of planks plus the vanilla 竹板 (bamboo planks) is
+     * all-shared on 板, and 木板 (shared by the other 94%) never got a chance. Gating by coverage and preferring
+     * length returns 木板, 牛排, and friends.
      */
     static String commonZhTail(List<String> displayNames) {
         List<String> names = new ArrayList<>();
@@ -199,46 +204,59 @@ public final class BctNames {
             if (!trimmed.isEmpty()) names.add(trimmed);
         }
         if (names.isEmpty()) return "";
-        if (names.size() == 1) return trimColorPrefix(names.get(0));
+        if (names.size() == 1) return trimColorPrefix(stripConnectives(names.get(0)));
 
         Map<String, Integer> coverage = new LinkedHashMap<>();
-        Map<String, Integer> endsWith = new LinkedHashMap<>();
         for (String name : names) {
             Set<String> seen = new HashSet<>();
-            int max = Math.min(name.length(), 4); // family words are short; 4 chars covers 混凝土/下界合金
+            // Long enough for mod family words like 下界合金块/铜傀儡雕像; still short enough not to eat a whole name.
+            int max = Math.min(name.length(), 8);
             for (int length = 1; length <= max; length++) {
                 String fragment = name.substring(name.length() - length);
                 if (!seen.add(fragment)) continue;
                 coverage.merge(fragment, 1, Integer::sum);
-                endsWith.merge(fragment, 1, Integer::sum);
             }
         }
-        // Strictest reading first: a fragment every member shares wins outright.
-        String shared = bestFragment(names.size(), coverage, endsWith);
-        if (!shared.isEmpty()) return trimColorPrefix(shared);
-        int majority = Math.max(2, (names.size() * 3 + 4) / 5); // ceil(0.6 * n)
-        return trimColorPrefix(bestFragment(majority, coverage, endsWith));
-    }
-
-    /** The most-covered fragment meeting {@code minimum}, preferring a trailing one, then the longer one. */
-    private static String bestFragment(int minimum, Map<String, Integer> coverage, Map<String, Integer> endsWith) {
+        int threshold = Math.max(2, (names.size() * 3 + 4) / 5); // ceil(0.6 * n)
         String best = "";
+        int bestCoverage = 0;
         for (Map.Entry<String, Integer> entry : coverage.entrySet()) {
-            if (entry.getValue() < minimum) continue;
-            if (best.isEmpty() || betterFragment(entry.getKey(), best, coverage, endsWith)) best = entry.getKey();
+            String fragment = entry.getKey();
+            if (entry.getValue() < threshold) continue;
+            if (fragment.length() == 1 && fragment.charAt(0) < 0x80) continue; // a lone "s" is noise, 排 is not
+            if (betterFragment(fragment, entry.getValue(), best, bestCoverage)) {
+                best = fragment;
+                bestCoverage = entry.getValue();
+            }
         }
-        // A one-character Latin fragment is noise ("s" ends many names); a one-character CJK fragment is meaningful.
-        if (best.length() == 1 && best.charAt(0) < 0x80) return "";
-        return best;
+        // Nothing cleared the gate: fall back to whatever every member shares, if anything.
+        if (best.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : coverage.entrySet()) {
+                if (entry.getValue() < names.size()) continue;
+                String fragment = entry.getKey();
+                if (fragment.length() == 1 && fragment.charAt(0) < 0x80) continue;
+                if (betterFragment(fragment, entry.getValue(), best, bestCoverage)) {
+                    best = fragment;
+                    bestCoverage = entry.getValue();
+                }
+            }
+        }
+        return trimColorPrefix(stripConnectives(best));
     }
 
-    private static boolean betterFragment(String candidate, String best, Map<String, Integer> coverage,
-                                          Map<String, Integer> endsWith) {
-        int byCount = coverage.get(candidate) - coverage.get(best);
-        if (byCount != 0) return byCount > 0;
-        int byEnd = endsWith.getOrDefault(candidate, 0) - endsWith.getOrDefault(best, 0);
-        if (byEnd != 0) return byEnd > 0;
-        return candidate.length() > best.length();
+    /** Longer wins outright (a real word beats its own tail); equal length falls back to wider coverage. */
+    private static boolean betterFragment(String candidate, int candidateCoverage, String best, int bestCoverage) {
+        if (best.isEmpty()) return true;
+        if (candidate.length() != best.length()) return candidate.length() > best.length();
+        return candidateCoverage > bestCoverage;
+    }
+
+    /** Drops a leading connective that a mod's name left on the shared tail: "的避雷针" -&gt; "避雷针". */
+    private static String stripConnectives(String tail) {
+        String out = tail;
+        while (!out.isEmpty() && (out.charAt(0) == '的' || out.charAt(0) == '之' || out.charAt(0) == '和'))
+            out = out.substring(1);
+        return out;
     }
 
     /**

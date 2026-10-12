@@ -55,6 +55,25 @@ public final class BctNameSelfTest {
                 stacks("minecraft:oak_planks", "minecraft:spruce_planks", "minecraft:birch_planks"));
         report("planks family", planks, "planks", "木板");
 
+        // 5) The reported regression: mixed display names whose literal common substring is one character ("排"),
+        //    but whose family word is two ("牛排"). Coverage-gated longest-fragment must return 牛排, not 排.
+        String steak = BctNames.commonZhTail(java.util.List.of(
+                "铜牛排", "铁牛排", "金牛排", "钻石牛排", "下界合金牛排"));
+        BedrockCreativeTabs.LOGGER.info("BCT namer selftest [steak tail]: {} ({})",
+                steak, steak.equals("牛排") ? "OK" : "期望 牛排");
+
+        // 6) An outlier must not collapse the family to its last character: bamboo_planks is 竹板, so a literal
+        //    all-shared read is 板, but 木板 covers the rest.
+        String plankTail = BctNames.commonZhTail(java.util.List.of(
+                "橡木木板", "云杉木板", "白桦木板", "竹板"));
+        BedrockCreativeTabs.LOGGER.info("BCT namer selftest [planks tail w/ outlier]: {} ({})",
+                plankTail, plankTail.equals("木板") ? "OK" : "期望 木板");
+
+        // 7) A leading connective a mod name left on the tail is stripped.
+        String lightning = BctNames.commonZhTail(java.util.List.of("铜的避雷针", "铁的避雷针", "金的避雷针"));
+        BedrockCreativeTabs.LOGGER.info("BCT namer selftest [lightning tail]: {} ({})",
+                lightning, lightning.equals("避雷针") ? "OK" : "期望 避雷针");
+
         BedrockCreativeTabs.LOGGER.info("BCT namer selftest: done");
     }
 
