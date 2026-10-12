@@ -28,4 +28,13 @@ public interface CreativeModeInventoryScreenAccessor {
     static CreativeModeTab bct$getSelectedTab() {
         throw new AssertionError();
     }
+
+    /**
+     * The verification hook needs the creative screen to open on one particular tab; which tab that is lives in the
+     * screen's own static field, so it has to be written there rather than passed in.
+     */
+    @Accessor("selectedTab")
+    static void bct$setSelectedTab(CreativeModeTab tab) {
+        throw new AssertionError();
+    }
 }

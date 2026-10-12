@@ -74,6 +74,7 @@ configurations {
 
 dependencies {
     //Tools
+    // The picker mode is fully native: no ApricityUI compile or runtime dependency remains.
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
     runtimeOnly "curse.maven:where-are-my-translations-1454778:8997277"
 }
