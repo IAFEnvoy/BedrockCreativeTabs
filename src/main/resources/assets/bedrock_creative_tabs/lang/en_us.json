@@ -1,4 +1,6 @@
 {
+  "key.category.bedrock_creative_tabs.editor": "Bedrock Creative Tabs",
+  "key.bedrock_creative_tabs.picker": "Toggle the group picker mode",
   "item.bedrock_creative_tabs.group": "Group Icon",
   "creative_group.bedrock_creative_tabs.arrows": "Arrows",
   "creative_group.bedrock_creative_tabs.axes": "Axes",

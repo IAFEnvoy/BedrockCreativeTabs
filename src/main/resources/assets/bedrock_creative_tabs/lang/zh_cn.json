@@ -1,4 +1,6 @@
 {
+  "key.category.bedrock_creative_tabs.editor": "BCT 创造分组",
+  "key.bedrock_creative_tabs.picker": "开关分组选择模式",
   "item.bedrock_creative_tabs.group": "分组图标",
   "creative_group.bedrock_creative_tabs.arrows": "箭",
   "creative_group.bedrock_creative_tabs.axes": "斧",
