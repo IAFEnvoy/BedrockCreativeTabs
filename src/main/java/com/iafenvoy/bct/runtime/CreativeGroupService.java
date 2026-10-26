@@ -1,5 +1,6 @@
 package com.iafenvoy.bct.runtime;
 
+import com.iafenvoy.bct.data.BctGroupStore;
 import com.iafenvoy.bct.data.CreativeGroup;
 import com.iafenvoy.bct.data.CreativeGroupLoader;
 import com.iafenvoy.bct.registry.BctDataComponents;
@@ -39,6 +40,10 @@ public final class CreativeGroupService {
     // Tab -> group id -> the stacks that tab's fold took off it, in tab order. Rebuilt whenever that tab is built, so
     // nothing in here can outlive the contents it describes; a group whose definition went away drops out with them.
     private static final Map<ResourceKey<CreativeModeTab>, Map<ResourceLocation, List<ItemStack>>> MEMBERS = new LinkedHashMap<>();
+    // Tab -> the parent entries as the game built them, taken before any fold touched them. This is the only moment
+    // the full set exists: a fold removes its members from that same list, so reading it afterwards would show a
+    // tab that shrinks a little more with every rebuild. The editor's item universe is the union of these.
+    private static final Map<ResourceKey<CreativeModeTab>, List<ItemStack>> UNIVERSE = new LinkedHashMap<>();
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onBuildContents(BuildCreativeModeTabContentsEvent event) {
@@ -51,6 +56,7 @@ public final class CreativeGroupService {
     private static void fold(BuildCreativeModeTabContentsEvent event) {
         ResourceKey<CreativeModeTab> tabKey = event.getTabKey();
         MEMBERS.put(tabKey, new LinkedHashMap<>());
+        UNIVERSE.put(tabKey, List.copyOf(event.getParentEntries()));
 
         // Must run before anything is taken out, and against the contents as the game built them.
         CreativeGroupLoader.checkAgainst(tabKey, event.getParentEntries());
@@ -93,7 +99,12 @@ public final class CreativeGroupService {
         icon.set(BctDataComponents.CREATIVE_GROUP_ID, id);
         icon.set(BctDataComponents.CREATIVE_GROUP_TAB, tab);
         icon.set(DataComponents.CREATIVE_SLOT_LOCK, Unit.INSTANCE);
-        icon.set(DataComponents.ITEM_NAME, Component.translatable(id.toLanguageKey("creative_group")));
+        // A group made in the editor has no pack to carry its language file, so its name is read from the writable
+        // directory instead. An exported pack writes the same key, so both paths agree.
+        String userName = BctGroupStore.nameOf(id);
+        icon.set(DataComponents.ITEM_NAME, userName != null
+                ? Component.literal(userName)
+                : Component.translatable(id.toLanguageKey("creative_group")));
         return icon;
     }
 
@@ -168,11 +179,44 @@ public final class CreativeGroupService {
     }
 
     /**
+     * The parent entries one tab was last built from, before any fold touched them - the editor's view of that tab.
+     *
+     * <p>Empty until the tab has been built at least once.
+     */
+    public static List<ItemStack> universe(ResourceKey<CreativeModeTab> tab) {
+        return UNIVERSE.getOrDefault(tab, List.of());
+    }
+
+    /**
+     * Every tab that has been built at least once, in build order - the tabs the editor can look for members in.
+     *
+     * <p>Insertion-ordered and read-only, not {@code Set.copyOf}: the caller picks the first matching tab as the one a
+     * new group is filed under, so the order is part of the answer rather than an accident of hashing.
+     */
+    public static Set<ResourceKey<CreativeModeTab>> builtTabs() {
+        return Collections.unmodifiableSet(UNIVERSE.keySet());
+    }
+
+    /**
+     * Every stack any built tab holds, deduplicated by the stack itself. This is what a selection is drawn from,
+     * and what the tag panel counts against, so it has to be the pre-fold contents rather than what is on screen.
+     *
+     * <p>Empty until the tabs have been built at least once - which is what {@link CreativeTabRebuild} is for.
+     */
+    public static List<ItemStack> universe() {
+        LinkedHashMap<ItemStack, ItemStack> unique = new LinkedHashMap<>();
+        for (List<ItemStack> tab : UNIVERSE.values())
+            for (ItemStack stack : tab) unique.putIfAbsent(stack, stack);
+        return List.copyOf(unique.values());
+    }
+
+    /**
      * Drops the member tables and rebuilds every tab. A member list only means anything next to the contents it came
      * from, and a cached tab list will not fold a new definition until it is built again.
      */
     public static void onGroupsReloaded() {
         MEMBERS.clear();
+        UNIVERSE.clear();
         CreativeTabRebuild.rebuild();
     }
 

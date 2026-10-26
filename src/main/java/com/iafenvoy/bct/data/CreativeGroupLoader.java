@@ -42,7 +42,13 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
     public static final String DIRECTORY = BedrockCreativeTabs.MOD_ID + "/creative_group";
     private static final Gson GSON = new Gson();
 
-    // In load order, keyed by the file name it came from. Swapped wholesale on reload, never mutated in place.
+    // What the resource packs hold. Swapped wholesale on reload, never mutated in place.
+    private static Map<ResourceLocation, CreativeGroup> packed = Map.of();
+    // What the editor wrote. A group here wins over a pack group sharing its id - that is the whole point of the
+    // writable directory, and it is applied here rather than left to pack ordering, which a virtual pack does not
+    // control.
+    private static final Map<ResourceLocation, CreativeGroup> user = new LinkedHashMap<>();
+    // The two merged, which is what every reader sees. Rebuilt on either change, never mutated in place.
     private static volatile Map<ResourceLocation, CreativeGroup> groups = Map.of();
     // Per entry, what the tabs built so far have said about it. Dropped with the table it describes.
     private static final Map<EntryKey, EntryCheck> entryChecks = new ConcurrentHashMap<>();
@@ -58,6 +64,37 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
      */
     public static Map<ResourceLocation, CreativeGroup> groups() {
         return groups;
+    }
+
+    /**
+     * Adds or replaces one editor-made group, and makes the merge visible to every reader at once.
+     */
+    public static void putUser(ResourceLocation id, CreativeGroup group) {
+        user.put(id, group);
+        merge();
+    }
+
+    public static boolean removeUser(ResourceLocation id) {
+        if (user.remove(id) == null) return false;
+        merge();
+        return true;
+    }
+
+    /**
+     * Whether a group of this id came from the editor's directory rather than a pack - what decides if it may be
+     * renamed or deleted in game.
+     */
+    public static boolean isUser(ResourceLocation id) {
+        return user.containsKey(id);
+    }
+
+    /**
+     * User groups last, so one sharing an id with a pack group replaces it rather than sitting next to it.
+     */
+    private static void merge() {
+        LinkedHashMap<ResourceLocation, CreativeGroup> merged = new LinkedHashMap<>(packed);
+        merged.putAll(user);
+        groups = Map.copyOf(merged);
     }
 
     /**
@@ -79,10 +116,13 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
         prepared.forEach((id, json) -> CreativeGroup.CODEC.parse(JsonOps.INSTANCE, json)
                 .resultOrPartial(error -> LOGGER.error("Skipping bedrock creative group {}: {}", id, error))
                 .ifPresent(group -> parsed.put(id, group)));
-        groups = Map.copyOf(parsed);
+        packed = Map.copyOf(parsed);
+        user.clear();
+        user.putAll(BctGroupStore.load());
+        merge();
         entryChecks.clear();
         fullyChecked = false;
-        LOGGER.info("Loaded {} bedrock creative group(s)", parsed.size());
+        LOGGER.info("Loaded {} bedrock creative group(s), {} from the editor", parsed.size(), user.size());
         CreativeGroupService.onGroupsReloaded();
     }
 
