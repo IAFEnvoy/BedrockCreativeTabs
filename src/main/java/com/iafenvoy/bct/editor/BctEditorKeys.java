@@ -16,7 +16,9 @@ import org.lwjgl.glfw.GLFW;
  */
 @EventBusSubscriber(modid = BedrockCreativeTabs.MOD_ID, value = Dist.CLIENT)
 public final class BctEditorKeys {
-    /** Label key: {@code key.category.bedrock_creative_tabs.editor}. */
+    /**
+     * Label key: {@code key.category.bedrock_creative_tabs.editor}.
+     */
     public static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(BedrockCreativeTabs.MOD_ID, "editor"));
     public static final KeyMapping TOGGLE_PICKER = new KeyMapping(

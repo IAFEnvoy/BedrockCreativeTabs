@@ -1,6 +1,5 @@
 package com.iafenvoy.bct.editor;
 
-import com.iafenvoy.bct.BedrockCreativeTabs;
 import com.iafenvoy.bct.data.BctGroupStore;
 import com.iafenvoy.bct.data.CreativeGroupLoader;
 import com.iafenvoy.bct.mixin.AbstractContainerScreenAccessor;
@@ -8,6 +7,7 @@ import com.iafenvoy.bct.mixin.CreativeModeInventoryScreenAccessor;
 import com.iafenvoy.bct.registry.BctDataComponents;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -16,12 +16,12 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.PreeditEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -31,12 +31,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * The picker's overlay layer, drawn and routed on top of the vanilla creative screen:
@@ -69,6 +64,7 @@ public final class BctPickerOverlay {
     private static EditBox searchBox;
     private static EditBox renameZh;
     private static EditBox renameEn;
+    private static CreativeModeInventoryScreen overlayScreen;
     private static boolean renameOpen;
     private static Identifier renamingId;
     private static boolean tagPanelOpen;
@@ -86,17 +82,22 @@ public final class BctPickerOverlay {
 
     @SubscribeEvent
     public static void onInit(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        reset();
         if (!BctEditorState.PICKER_MODE) return;
-        if (!(event.getScreen() instanceof CreativeModeInventoryScreen)) return;
-        // The overlay lives beside the GUI; without room there is nothing to attach to. The right-side panels are
-        // popups - they may overlap the GUI while open.
-        if (event.getScreen().width < 340) return;
+        overlayScreen = screen;
         Minecraft minecraft = Minecraft.getInstance();
-        searchBox = new EditBox(minecraft.font, COL_X, SEARCH_Y, COL_W, SEARCH_H, Component.literal("搜索 名称或 id"));
-        searchBox.setMaxLength(64);
-        event.addListener(searchBox);
-        renameZh = new EditBox(minecraft.font, 0, 0, PANEL_W - 12, 12, Component.literal("中文名"));
-        renameEn = new EditBox(minecraft.font, 0, 0, PANEL_W - 12, 12, Component.literal("英文名"));
+        // Only the side column needs a wide window. Rename popups and item tags remain usable at smaller sizes.
+        if (screen.width >= 340) {
+            searchBox = new EditBox(minecraft.font, COL_X, SEARCH_Y, COL_W, SEARCH_H,
+                    Component.translatable("editor.bedrock_creative_tabs.search"));
+            searchBox.setMaxLength(64);
+            event.addListener(searchBox);
+        }
+        renameZh = new EditBox(minecraft.font, 0, 0, PANEL_W - 12, 12,
+                Component.translatable("editor.bedrock_creative_tabs.name_zh"));
+        renameEn = new EditBox(minecraft.font, 0, 0, PANEL_W - 12, 12,
+                Component.translatable("editor.bedrock_creative_tabs.name_en"));
         for (EditBox box : new EditBox[]{renameZh, renameEn}) {
             box.setMaxLength(48);
             box.setVisible(false);
@@ -104,7 +105,34 @@ public final class BctPickerOverlay {
         }
     }
 
-    /** Rename panel: bottom-left, clear of the creative GUI which sits centred. */
+    @SubscribeEvent
+    public static void onClose(ScreenEvent.Closing event) {
+        if (event.getScreen() == overlayScreen) reset();
+    }
+
+    static void reset() {
+        for (EditBox box : new EditBox[]{searchBox, renameZh, renameEn}) {
+            if (box == null) continue;
+            box.setVisible(false);
+            box.setFocused(false);
+            if (overlayScreen != null && overlayScreen.getFocused() == box) overlayScreen.setFocused(null);
+        }
+        searchBox = null;
+        renameZh = null;
+        renameEn = null;
+        overlayScreen = null;
+        renameOpen = false;
+        renamingId = null;
+        tagPanelOpen = false;
+        tagPanel = List.of();
+        tagScroll = 0;
+        tagPanelX = tagPanelY = tagPanelRows = 0;
+        renamePanelX = renamePanelY = 0;
+    }
+
+    /**
+     * Rename panel: bottom-left, clear of the creative GUI which sits centred.
+     */
     private static final int RENAME_H = 84;
 
     private static int renameX(Screen screen) {
@@ -143,8 +171,9 @@ public final class BctPickerOverlay {
     public static void onRender(ScreenEvent.Render.Post event) {
         if (!BctEditorState.PICKER_MODE) return;
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        if (screen != overlayScreen) return;
         GuiGraphicsExtractor graphics = event.getGuiGraphics();
-        var font = minecraft().font;
+        Font font = minecraft().font;
         int mouseX = event.getMouseX();
         int mouseY = event.getMouseY();
         if (searchBox != null && searchBox.visible) {
@@ -152,7 +181,14 @@ public final class BctPickerOverlay {
             boolean hover = inRect(mouseX, mouseY, COL_X, MATCH_ROW_Y, COL_W, ROW_H);
             graphics.fill(RenderPipelines.GUI, COL_X, MATCH_ROW_Y, COL_X + COL_W, MATCH_ROW_Y + ROW_H,
                     hover ? 0xff3c8527 : 0xff313233);
-            graphics.text(font, Component.literal("选中匹配项"), COL_X + 4, MATCH_ROW_Y + 2, 0xffffffff);
+            graphics.text(font, Component.translatable("editor.bedrock_creative_tabs.select_matches"),
+                    COL_X + 4, MATCH_ROW_Y + 2, 0xffffffff);
+        } else if (searchBox == null) {
+            int y = SEARCH_Y;
+            for (FormattedCharSequence line : font.split(Component.translatable("editor.bedrock_creative_tabs.narrow_window"), screen.width - 12)) {
+                graphics.text(font, line, COL_X, y, 0xffffcc55);
+                y += font.lineHeight;
+            }
         }
         if (renameOpen) drawRename(screen, graphics, mouseX, mouseY);
         if (tagPanelOpen) drawTags(screen, graphics, mouseX, mouseY);
@@ -163,15 +199,17 @@ public final class BctPickerOverlay {
         int y = renamePanelY = renameY(screen);
         graphics.fill(RenderPipelines.GUI, x, y, x + PANEL_W, y + RENAME_H, 0xE0131314);
         graphics.fill(RenderPipelines.GUI, x, y, x + PANEL_W, y + 1, 0xff7345e5);
-        graphics.text(minecraft().font, Component.literal("重命名 " + renamingId), x + 5, y + 3, 0xffe4e5e8);
+        graphics.text(minecraft().font, minecraft().font.plainSubstrByWidth(
+                        Component.translatable("editor.bedrock_creative_tabs.rename", renamingId.toString()).getString(), PANEL_W - 10),
+                x + 5, y + 3, 0xffe4e5e8);
         renameZh.setX(x + 6);
         renameZh.setY(y + 18);
         renameEn.setX(x + 6);
         renameEn.setY(y + 34);
         renameZh.extractRenderState(graphics, mouseX, mouseY, 0.0F);
         renameEn.extractRenderState(graphics, mouseX, mouseY, 0.0F);
-        row(graphics, x + 6, y + 50, PANEL_W - 12, "保存 (Enter)", mouseX, mouseY);
-        row(graphics, x + 6, y + 64, PANEL_W - 12, "关闭", mouseX, mouseY);
+        row(graphics, x + 6, y + 50, PANEL_W - 12, Component.translatable("editor.bedrock_creative_tabs.save"), mouseX, mouseY);
+        row(graphics, x + 6, y + 64, PANEL_W - 12, Component.translatable("editor.bedrock_creative_tabs.close"), mouseX, mouseY);
     }
 
     private static void drawTags(CreativeModeInventoryScreen screen, GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -185,7 +223,7 @@ public final class BctPickerOverlay {
         int height = 14 + rows * ROW_H + 4;
         graphics.fill(RenderPipelines.GUI, x, y, x + width, y + height, 0xE0131314);
         graphics.fill(RenderPipelines.GUI, x, y, x + width, y + 1, 0xff3c8527);
-        graphics.text(minecraft().font, Component.literal("标签列表 滚轮翻页 · 点击选中同类"),
+        graphics.text(minecraft().font, Component.translatable("editor.bedrock_creative_tabs.tags"),
                 x + 5, y + 3, 0xff6cc349);
         for (int index = 0; index < rows && tagScroll + index < total; index++) {
             int rowY = y + 14 + index * ROW_H;
@@ -200,7 +238,9 @@ public final class BctPickerOverlay {
         if (maxScroll > 0) drawScrollbar(graphics, x + width - 8, y + 14, rows * ROW_H, tagScroll, rows, total);
     }
 
-    /** A thin scrollbar on the panel's right edge; thumb size reflects the visible fraction. */
+    /**
+     * A thin scrollbar on the panel's right edge; thumb size reflects the visible fraction.
+     */
     private static void drawScrollbar(GuiGraphicsExtractor graphics, int x, int y, int trackHeight,
                                       int scroll, int rows, int total) {
         graphics.fill(RenderPipelines.GUI, x, y, x + 4, y + trackHeight, 0x30ffffff);
@@ -209,16 +249,17 @@ public final class BctPickerOverlay {
         graphics.fill(RenderPipelines.GUI, x, y + offset, x + 4, y + offset + thumb, 0xff9a9da3);
     }
 
-    private static void row(GuiGraphicsExtractor graphics, int x, int y, int width, String label, int mouseX, int mouseY) {
+    private static void row(GuiGraphicsExtractor graphics, int x, int y, int width, Component label, int mouseX, int mouseY) {
         boolean hover = inRect(mouseX, mouseY, x, y, width, ROW_H);
         graphics.fill(RenderPipelines.GUI, x, y, x + width, y + ROW_H, hover ? 0xff3c8527 : 0xff313233);
-        graphics.text(minecraft().font, Component.literal(label), x + 4, y + 2, 0xffffffff);
+        graphics.text(minecraft().font, label, x + 4, y + 2, 0xffffffff);
     }
 
     @SubscribeEvent
     public static void onMouseDown(ScreenEvent.MouseButtonPressed.Pre event) {
         if (!BctEditorState.PICKER_MODE) return;
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        if (screen != overlayScreen) return;
         int mouseX = (int) event.getMouseX();
         int mouseY = (int) event.getMouseY();
 
@@ -269,29 +310,33 @@ public final class BctPickerOverlay {
             Slot slot = screen.getHoveredSlot();
             ItemStack hovered = slot == null || slot.index >= 45 ? ItemStack.EMPTY : slot.getItem();
             if (hovered.isEmpty() || hovered.has(BctDataComponents.CREATIVE_GROUP_ID)) return;
-            Set<TagKey<Item>> tags = new TreeSet<>((a, b) -> a.location().toString().compareTo(b.location().toString()));
+            Set<TagKey<Item>> tags = new TreeSet<>(Comparator.comparing(a -> a.location().toString()));
             BuiltInRegistries.ITEM.wrapAsHolder(hovered.getItem()).tags().forEach(tags::add);
             tagPanel = List.copyOf(tags);
             tagPanelOpen = true;
             tagScroll = 0;
-            minecraft().player.sendOverlayMessage(Component.literal(tags.isEmpty()
-                    ? "该物品没有任何标签" : "共 " + tags.size() + " 个标签，滚轮翻页，点击选中同类"));
+            minecraft().player.sendOverlayMessage(tags.isEmpty()
+                    ? Component.translatable("editor.bedrock_creative_tabs.no_tags")
+                    : Component.translatable("editor.bedrock_creative_tabs.tag_count", tags.size()));
             event.setCanceled(true);
             return;
         }
 
-        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+        if (searchBox != null && searchBox.visible && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && inRect(mouseX, mouseY, COL_X, MATCH_ROW_Y, COL_W, ROW_H)) {
             selectMatching(screen);
             event.setCanceled(true);
         }
     }
 
-    /** Scroll wheel pages the tag list when the cursor is over it. */
+    /**
+     * Scroll wheel pages the tag list when the cursor is over it.
+     */
     @SubscribeEvent
     public static void onScroll(ScreenEvent.MouseScrolled.Pre event) {
         if (!BctEditorState.PICKER_MODE || !tagPanelOpen) return;
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        if (screen != overlayScreen) return;
         int mouseX = (int) event.getMouseX();
         int mouseY = (int) event.getMouseY();
         int height = 14 + tagPanelRows * ROW_H + 4;
@@ -302,23 +347,30 @@ public final class BctPickerOverlay {
         event.setCanceled(true);
     }
 
-    /** Keys on the overlay's own widgets. Typing guards live in BctEditorMode for the mode's keys. */
+    /**
+     * Keys on the overlay's own widgets. Typing guards live in BctEditorMode for the mode's keys.
+     */
     @SubscribeEvent
     public static void onKey(ScreenEvent.KeyPressed.Pre event) {
         if (!BctEditorState.PICKER_MODE) return;
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        if (screen != overlayScreen) return;
         if (!(screen.getFocused() instanceof EditBox focused)) return;
+        if (!isOverlayBox(focused)) return;
         if (event.getKeyCode() != GLFW.GLFW_KEY_ENTER && event.getKeyCode() != GLFW.GLFW_KEY_KP_ENTER) return;
         if (focused == searchBox) selectMatching(screen);
         else if (renameOpen) saveRename();
         event.setCanceled(true);
     }
 
-    /** R on one of your own group icons opens the rename panel. */
+    /**
+     * R on one of your own group icons opens the rename panel.
+     */
     @SubscribeEvent
     public static void onRenameKey(ScreenEvent.KeyPressed.Pre event) {
         if (!BctEditorState.PICKER_MODE || renameOpen) return;
         if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
+        if (screen != overlayScreen || renameZh == null || renameEn == null) return;
         if (event.getKeyCode() != GLFW.GLFW_KEY_R) return;
         if (screen.getFocused() instanceof EditBox) return;
         Minecraft minecraft = Minecraft.getInstance();
@@ -326,7 +378,7 @@ public final class BctPickerOverlay {
         ItemStack hovered = slot == null || slot.index >= 45 ? ItemStack.EMPTY : slot.getItem();
         Identifier id = hovered.get(BctDataComponents.CREATIVE_GROUP_ID);
         if (id == null || !CreativeGroupLoader.isUser(id)) {
-            minecraft.player.sendOverlayMessage(Component.literal("R 重命名需要悬停在自己的分组图标上"));
+            minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.rename_hover_own"));
             return;
         }
         renamingId = id;
@@ -346,25 +398,28 @@ public final class BctPickerOverlay {
     }
 
     private static void saveRename() {
-        BctGroupStore.rename(renamingId, renameZh.getValue().isBlank() ? null : renameZh.getValue(),
+        if (!renameOpen || renamingId == null || renameZh == null || renameEn == null) return;
+        Identifier id = renamingId;
+        BctGroupStore.rename(id, renameZh.getValue().isBlank() ? null : renameZh.getValue(),
                 renameEn.getValue().isBlank() ? null : renameEn.getValue());
         CreativeGroupService.onGroupsReloaded();
         closeRename();
-        minecraft().player.sendOverlayMessage(Component.literal("已保存 " + renamingId + " 的名称"));
+        minecraft().player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.name_saved", id.toString()));
     }
 
     private static void closeRename() {
         renameOpen = false;
         renamingId = null;
-        renameZh.setVisible(false);
-        renameEn.setVisible(false);
-        if (minecraft().screen != null) minecraft().screen.setFocused(null);
+        if (renameZh != null) renameZh.setVisible(false);
+        if (renameEn != null) renameEn.setVisible(false);
+        blur(renameZh);
+        blur(renameEn);
     }
 
     private static void selectMatching(CreativeModeInventoryScreen screen) {
         String query = searchBox == null ? "" : searchBox.getValue().trim().toLowerCase(Locale.ROOT);
         if (query.isEmpty()) {
-            minecraft().player.sendOverlayMessage(Component.literal("先在搜索框输入名称或 id"));
+            minecraft().player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.search_empty"));
             return;
         }
         CreativeModeTab tab = CreativeModeInventoryScreenAccessor.bct$getSelectedTab();
@@ -394,8 +449,8 @@ public final class BctPickerOverlay {
         // the search box kept focus after selecting, and the next G/C/R a player pressed was typed into it (the mode
         // keys stand down while a box is focused) instead of folding a group.
         blur(searchBox);
-        minecraft().player.sendOverlayMessage(Component.literal(
-                "选中匹配 “" + query + "” 的 " + added + " 个物品（共 " + BctEditorState.CHOSEN.size() + " 个）"));
+        minecraft().player.sendOverlayMessage(Component.translatable(
+                "editor.bedrock_creative_tabs.matches_selected", query, added, BctEditorState.CHOSEN.size()));
     }
 
     private static void selectTag(TagKey<Item> tag, Minecraft minecraft) {
@@ -403,17 +458,19 @@ public final class BctPickerOverlay {
         for (ItemStack stack : CreativeGroupService.universe()) {
             if (stack.isEmpty() || !stack.is(tag)) continue;
             Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (id != null && BctEditorState.CHOSEN.add(id.toString())) added++;
+            if (BctEditorState.CHOSEN.add(id.toString())) added++;
         }
-        minecraft.player.sendOverlayMessage(Component.literal(
-                "选中 #" + tag.location() + " 的 " + added + " 个物品（共 " + BctEditorState.CHOSEN.size() + " 个）"));
+        minecraft.player.sendOverlayMessage(Component.translatable(
+                "editor.bedrock_creative_tabs.tag_selected", tag.location().toString(), added, BctEditorState.CHOSEN.size()));
     }
 
     private static boolean inRect(int mx, int my, int x, int y, int w, int h) {
         return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 
-    /** Drops focus from a box, so the mode's shortcut keys answer again. */
+    /**
+     * Drops focus from a box, so the mode's shortcut keys answer again.
+     */
     private static void blur(EditBox box) {
         if (box == null) return;
         box.setFocused(false);
@@ -433,16 +490,26 @@ public final class BctPickerOverlay {
     public static boolean forwardChar(CharacterEvent event) {
         if (!BctEditorState.PICKER_MODE) return false;
         if (!(minecraft().screen instanceof CreativeModeInventoryScreen screen)) return false;
+        if (screen != overlayScreen) return false;
         if (!(screen.getFocused() instanceof EditBox box)) return false;
+        if (!isOverlayBox(box) || !box.visible) return false;
         return box.charTyped(event);
     }
 
-    /** IME preedit text (e.g. composing Chinese) is dropped by the same vanilla override - forward it too. */
+    /**
+     * IME preedit text (e.g. composing Chinese) is dropped by the same vanilla override - forward it too.
+     */
     public static boolean forwardPreedit(PreeditEvent event) {
         if (!BctEditorState.PICKER_MODE) return false;
         if (!(minecraft().screen instanceof CreativeModeInventoryScreen screen)) return false;
+        if (screen != overlayScreen) return false;
         if (!(screen.getFocused() instanceof EditBox box)) return false;
+        if (!isOverlayBox(box) || !box.visible) return false;
         return box.preeditUpdated(event);
+    }
+
+    private static boolean isOverlayBox(EditBox box) {
+        return box == searchBox || box == renameZh || box == renameEn;
     }
 
     private static Minecraft minecraft() {

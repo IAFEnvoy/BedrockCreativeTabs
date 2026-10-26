@@ -7,16 +7,21 @@ import com.google.gson.JsonParser;
 import com.iafenvoy.bct.BedrockCreativeTabs;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.metadata.pack.PackFormat;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -54,7 +59,9 @@ public final class BctGroupStore {
         return names.get(id);
     }
 
-    /** The stored name in one locale, or {@code null} - what the rename panel's fields prefill from. */
+    /**
+     * The stored name in one locale, or {@code null} - what the rename panel's fields prefill from.
+     */
     public static String nameIn(Identifier id, String locale) {
         return readLang(locale, id);
     }
@@ -73,7 +80,9 @@ public final class BctGroupStore {
         refreshName(id);
     }
 
-    /** Recomputes one group's cached display name: Chinese first, English next, none means fall back to translation. */
+    /**
+     * Recomputes one group's cached display name: Chinese first, English next, none means fall back to translation.
+     */
     private static void refreshName(Identifier id) {
         String name = readLang("zh_cn", id);
         if (name == null) name = readLang("en_us", id);
@@ -81,15 +90,17 @@ public final class BctGroupStore {
         else names.put(id, name);
     }
 
-    /** Every group in the writable directory, keyed by file name. A file that fails to parse is logged and skipped. */
+    /**
+     * Every group in the writable directory, keyed by file name. A file that fails to parse is logged and skipped.
+     */
     public static Map<Identifier, CreativeGroup> load() {
         LinkedHashMap<Identifier, CreativeGroup> loaded = new LinkedHashMap<>();
         Path root = root().resolve("groups");
         if (!Files.isDirectory(root)) return loaded;
-        try (var namespaces = Files.list(root)) {
+        try (Stream<@NotNull Path> namespaces = Files.list(root)) {
             for (Path namespaceDir : namespaces.filter(Files::isDirectory).toList()) {
                 String namespace = namespaceDir.getFileName().toString();
-                try (var files = Files.walk(namespaceDir)) {
+                try (Stream<@NotNull Path> files = Files.walk(namespaceDir)) {
                     for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
                         String relative = namespaceDir.relativize(file).toString().replace('\\', '/');
                         String path = relative.substring(0, relative.length() - ".json".length());
@@ -112,16 +123,16 @@ public final class BctGroupStore {
         return loaded;
     }
 
-    /** Writes one group plus its two language names. Returns the file it landed in. */
+    /**
+     * Writes one group plus its two language names. Returns the file it landed in.
+     */
     public static Path save(Identifier id, CreativeGroup group, String nameZh, String nameEn) {
         Path file = null;
         try {
             JsonElement encoded = CreativeGroup.CODEC.encodeStart(JsonOps.INSTANCE, group).getOrThrow();
             file = groupFile(id);
             write(file, GSON.create().toJson(encoded) + "\n");
-            if (nameZh != null) writeLang("zh_cn", id, nameZh);
-            if (nameEn != null) writeLang("en_us", id, nameEn);
-            refreshName(id);
+            rename(id, nameZh, nameEn);
         } catch (Exception exception) {
             BedrockCreativeTabs.LOGGER.error("BCT editor: could not write {}", id, exception);
         }
@@ -143,16 +154,20 @@ public final class BctGroupStore {
         }
     }
 
-    /** The directory as a resource pack would need it, minus the zip: what an export would copy. */
+    /**
+     * The directory as a resource pack would need it, minus the zip: what an export would copy.
+     */
     public static Path root() {
         return Minecraft.getInstance().gameDirectory.toPath().resolve(ROOT);
     }
 
-    /** How many group definitions sit in the writable directory, for a readable export report. */
+    /**
+     * How many group definitions sit in the writable directory, for a readable export report.
+     */
     public static int countGroups() {
         Path groupsRoot = root().resolve("groups");
         if (!Files.isDirectory(groupsRoot)) return 0;
-        try (var stream = Files.walk(groupsRoot)) {
+        try (Stream<@NotNull Path> stream = Files.walk(groupsRoot)) {
             return (int) stream.filter(path -> path.toString().endsWith(".json")).count();
         } catch (Exception exception) {
             return 0;
@@ -168,23 +183,28 @@ public final class BctGroupStore {
      * reads), and {@code lang/&lt;locale&gt;.json} becomes {@code assets/bct_user/lang/&lt;locale&gt;.json} - the
      * {@code creative_group.*} keys are global, so one namespace carrying them is enough.
      *
-     * <p>{@code pack.mcmeta} declares {@code pack_format: 64} <em>and</em> {@code min_format}/{@code max_format}:
-     * 26.1 refuses packs claiming support beyond 64 without an explicit range ("missing mandatory fields
-     * min_format and max_format" - the warning the old BCT Studio export tripped). The fields parse as ints.
+     * <p>The game's pack-format codec writes the current resource version and its minor-version range, including
+     * only the metadata fields valid for that version. No version number needs to be kept in sync by hand.
      *
      * @return the zip, or {@code null} when the write failed
      */
     public static Path exportPack() {
         Path target = Minecraft.getInstance().gameDirectory.toPath().resolve("resourcepacks").resolve("BCT_groups.zip");
         Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
+        try {
+            Files.createDirectories(target.getParent());
+        } catch (Exception exception) {
+            BedrockCreativeTabs.LOGGER.error("BCT editor: could not create export directory {}", target.getParent(), exception);
+            return null;
+        }
         try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(temporary))) {
-            put(zip, "pack.mcmeta", PACK_META);
+            put(zip, "pack.mcmeta", packMetadata());
             Path groupsRoot = root().resolve("groups");
             if (Files.isDirectory(groupsRoot)) {
-                try (var namespaces = Files.list(groupsRoot)) {
+                try (Stream<@NotNull Path> namespaces = Files.list(groupsRoot)) {
                     for (Path namespaceDir : namespaces.filter(Files::isDirectory).toList()) {
                         String namespace = namespaceDir.getFileName().toString();
-                        try (var files = Files.walk(namespaceDir)) {
+                        try (Stream<@NotNull Path> files = Files.walk(namespaceDir)) {
                             for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
                                 String relative = namespaceDir.relativize(file).toString().replace('\\', '/');
                                 put(zip, "assets/" + namespace + "/bedrock_creative_tabs/creative_group/" + relative,
@@ -196,7 +216,7 @@ public final class BctGroupStore {
             }
             Path langDir = root().resolve("lang");
             if (Files.isDirectory(langDir)) {
-                try (var files = Files.list(langDir)) {
+                try (Stream<@NotNull Path> files = Files.list(langDir)) {
                     for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
                         put(zip, "assets/" + DEFAULT_NAMESPACE + "/lang/" + file.getFileName(),
                                 Files.readString(file, StandardCharsets.UTF_8));
@@ -208,7 +228,7 @@ public final class BctGroupStore {
             return null;
         }
         try {
-            Files.move(temporary, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception exception) {
             BedrockCreativeTabs.LOGGER.error("BCT editor: could not move export into place at {}", target, exception);
             return null;
@@ -217,17 +237,15 @@ public final class BctGroupStore {
         return target;
     }
 
-    private static final String PACK_META = """
-            {
-              "pack": {
-                "pack_format": 64,
-                "min_format": 64,
-                "max_format": 64,
-                "supported_formats": [64, 64],
-                "description": "Bedrock Creative Tabs groups - created in game"
-              }
-            }
-            """;
+    private static String packMetadata() {
+        PackFormat version = SharedConstants.getCurrentVersion().packVersion(PackType.CLIENT_RESOURCES);
+        JsonObject pack = PackFormat.packCodec(PackType.CLIENT_RESOURCES).codec()
+                .encodeStart(JsonOps.INSTANCE, version.minorRange()).getOrThrow().getAsJsonObject();
+        pack.addProperty("description", "Bedrock Creative Tabs groups - created in game");
+        JsonObject metadata = new JsonObject();
+        metadata.add("pack", pack);
+        return GSON.create().toJson(metadata) + "\n";
+    }
 
     private static void put(ZipOutputStream zip, String entryName, String content) throws Exception {
         zip.putNextEntry(new ZipEntry(entryName));
@@ -259,7 +277,9 @@ public final class BctGroupStore {
         return value == null || !value.isJsonPrimitive() ? null : value.getAsString();
     }
 
-    /** A null name removes the entry, which is how a deleted group stops naming itself. */
+    /**
+     * A null name removes the entry, which is how a deleted group stops naming itself.
+     */
     private static void writeLang(String locale, Identifier id, String name) {
         Path file = root().resolve("lang").resolve(locale + ".json");
         try {
@@ -288,7 +308,7 @@ public final class BctGroupStore {
         Files.createDirectories(file.getParent());
         Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
         Files.writeString(temporary, text, StandardCharsets.UTF_8);
-        Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
     }
 
     private BctGroupStore() {

@@ -27,18 +27,18 @@ public final class BctEditorCommands {
                 .then(Commands.literal("edit")
                         .executes(context -> {
                             BctEditorMode.enterPicker(Minecraft.getInstance());
-                            context.getSource().sendSuccess(() -> Component.literal("BCT 选择模式已开启。"), false);
+                            context.getSource().sendSuccess(() -> Component.translatable("editor.bedrock_creative_tabs.command_enabled"), false);
                             return 1;
                         }))
                 .then(Commands.literal("export")
                         .executes(context -> {
                             Path file = BctGroupStore.exportPack();
                             if (file == null) {
-                                context.getSource().sendFailure(Component.literal("导出失败，见日志。"));
+                                context.getSource().sendFailure(Component.translatable("editor.bedrock_creative_tabs.export_failed"));
                                 return 0;
                             }
-                            context.getSource().sendSuccess(() -> Component.literal(
-                                    "已导出 " + file + " · " + BctGroupStore.countGroups() + " 个分组 · F3+T 后在资源包列表启用。"), false);
+                            context.getSource().sendSuccess(() -> Component.translatable(
+                                    "editor.bedrock_creative_tabs.exported", file.toString(), BctGroupStore.countGroups()), false);
                             return 1;
                         })));
     }

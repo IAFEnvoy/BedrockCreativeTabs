@@ -4,13 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Derives a group's id, Chinese name and English name from the very items the group holds, so the three agree
@@ -48,56 +42,209 @@ public final class BctNames {
     private static final Map<String, String> ZH = new LinkedHashMap<>();
 
     static {
-        put("planks", "木板"); put("log", "原木"); put("logs", "原木"); put("wood", "木"); put("stripped", "去皮");
-        put("stairs", "楼梯"); put("slab", "台阶"); put("slabs", "台阶"); put("wall", "墙"); put("walls", "墙");
-        put("fence", "栅栏"); put("fences", "栅栏"); put("gate", "门"); put("fence_gate", "栅栏门");
-        put("door", "门"); put("doors", "门"); put("trapdoor", "活板门"); put("button", "按钮"); put("buttons", "按钮");
-        put("pressure_plate", "压力板"); put("bars", "栏杆"); put("pane", "板"); put("panes", "板");
-        put("glass", "玻璃"); put("glass_pane", "玻璃板"); put("ore", "矿石"); put("ores", "矿石");
-        put("ingot", "锭"); put("ingots", "锭"); put("nugget", "粒"); put("nuggets", "粒");
-        put("dust", "粉"); put("gem", "宝石"); put("raw", "粗"); put("block", "块"); put("blocks", "方块");
-        put("storage", "存储"); put("brick", "砖"); put("bricks", "砖"); put("stone", "石"); put("cobblestone", "圆石");
-        put("deepslate", "深板岩"); put("sandstone", "砂岩"); put("terracotta", "陶瓦"); put("glazed", "带釉");
-        put("concrete", "混凝土"); put("concrete_powder", "混凝土粉末"); put("wool", "羊毛"); put("wools", "羊毛");
-        put("carpet", "地毯"); put("carpets", "地毯"); put("dye", "染料"); put("dyes", "染料");
-        put("sword", "剑"); put("swords", "剑"); put("axe", "斧"); put("axes", "斧"); put("pickaxe", "镐");
-        put("shovel", "锹"); put("hoe", "锄"); put("helmet", "头盔"); put("chestplate", "胸甲");
-        put("leggings", "护腿"); put("boots", "靴子"); put("horse_armor", "马铠"); put("shield", "盾牌");
-        put("bow", "弓"); put("crossbow", "弩"); put("arrow", "箭"); put("arrows", "箭"); put("tipped_arrow", "药箭");
-        put("trident", "三叉戟"); put("fishing_rod", "钓鱼竿"); put("shears", "剪刀"); put("apple", "苹果");
-        put("bread", "面包"); put("seed", "种子"); put("seeds", "种子"); put("sapling", "树苗"); put("leaves", "树叶");
-        put("flower", "花"); put("flowers", "花"); put("coral", "珊瑚"); put("coral_block", "珊瑚块");
-        put("coral_fan", "珊瑚扇"); put("amethyst", "紫水晶"); put("bud", "芽"); put("copper", "铜");
-        put("iron", "铁"); put("gold", "金"); put("diamond", "钻石"); put("emerald", "绿宝石");
-        put("netherite", "下界合金"); put("redstone", "红石"); put("coal", "煤"); put("charcoal", "木炭");
-        put("lapis", "青金石"); put("quartz", "石英"); put("nether", "下界"); put("end", "末地");
-        put("chest", "箱子"); put("chests", "箱子"); put("boat", "船"); put("boats", "船");
-        put("chest_boat", "箱子船"); put("minecart", "矿车"); put("rail", "铁轨"); put("rails", "铁轨");
-        put("sign", "告示牌"); put("hanging_sign", "悬挂告示牌"); put("lantern", "灯笼"); put("chain", "锁链");
-        put("candle", "蜡烛"); put("banner", "旗帜"); put("bed", "床"); put("shulker_box", "潜影盒");
-        put("bundle", "收纳袋"); put("bucket", "桶"); put("potion", "药水"); put("music_disc", "唱片");
-        put("painting", "画"); put("goat_horn", "山羊角"); put("pottery_sherd", "陶片");
-        put("smithing_template", "升级模板"); put("armor_trim", "盔甲纹饰"); put("trim", "纹饰");
-        put("harness", "挽具"); put("spear", "长矛"); put("shelf", "架子"); put("shelves", "架子");
-        put("lightning_rod", "避雷针"); put("firework", "烟花"); put("chiseled", "雕纹"); put("cut", "切制");
-        put("grate", "格栅"); put("grates", "格栅"); put("bulb", "铜灯"); put("bulbs", "铜灯");
-        put("statue", "雕像"); put("head", "头颅"); put("skull", "头颅"); put("nautilus_armor", "鹦鹉螺盔甲");
-        put("armor", "盔甲"); put("tools", "工具"); put("tool", "工具"); put("weapon", "武器"); put("weapons", "武器");
-        put("gear", "装备"); put("material", "材料"); put("ingredient", "材料"); put("alloy", "合金");
-        put("casing", "外壳"); put("pipe", "管道"); put("cable", "线缆"); put("machine", "机器"); put("machines", "机器");
-        put("battery", "电池"); put("template", "模板"); put("plate", "板"); put("plates", "板");
-        put("rod", "杆"); put("rods", "杆"); put("crystal", "水晶"); put("circuit", "电路"); put("chip", "芯片");
-        put("component", "零件"); put("upgrade", "升级"); put("module", "模块");
+        put("planks", "木板");
+        put("log", "原木");
+        put("logs", "原木");
+        put("wood", "木");
+        put("stripped", "去皮");
+        put("stairs", "楼梯");
+        put("slab", "台阶");
+        put("slabs", "台阶");
+        put("wall", "墙");
+        put("walls", "墙");
+        put("fence", "栅栏");
+        put("fences", "栅栏");
+        put("gate", "门");
+        put("fence_gate", "栅栏门");
+        put("door", "门");
+        put("doors", "门");
+        put("trapdoor", "活板门");
+        put("button", "按钮");
+        put("buttons", "按钮");
+        put("pressure_plate", "压力板");
+        put("bars", "栏杆");
+        put("pane", "板");
+        put("panes", "板");
+        put("glass", "玻璃");
+        put("glass_pane", "玻璃板");
+        put("ore", "矿石");
+        put("ores", "矿石");
+        put("ingot", "锭");
+        put("ingots", "锭");
+        put("nugget", "粒");
+        put("nuggets", "粒");
+        put("dust", "粉");
+        put("gem", "宝石");
+        put("raw", "粗");
+        put("block", "块");
+        put("blocks", "方块");
+        put("storage", "存储");
+        put("brick", "砖");
+        put("bricks", "砖");
+        put("stone", "石");
+        put("cobblestone", "圆石");
+        put("deepslate", "深板岩");
+        put("sandstone", "砂岩");
+        put("terracotta", "陶瓦");
+        put("glazed", "带釉");
+        put("concrete", "混凝土");
+        put("concrete_powder", "混凝土粉末");
+        put("wool", "羊毛");
+        put("wools", "羊毛");
+        put("carpet", "地毯");
+        put("carpets", "地毯");
+        put("dye", "染料");
+        put("dyes", "染料");
+        put("sword", "剑");
+        put("swords", "剑");
+        put("axe", "斧");
+        put("axes", "斧");
+        put("pickaxe", "镐");
+        put("shovel", "锹");
+        put("hoe", "锄");
+        put("helmet", "头盔");
+        put("chestplate", "胸甲");
+        put("leggings", "护腿");
+        put("boots", "靴子");
+        put("horse_armor", "马铠");
+        put("shield", "盾牌");
+        put("bow", "弓");
+        put("crossbow", "弩");
+        put("arrow", "箭");
+        put("arrows", "箭");
+        put("tipped_arrow", "药箭");
+        put("trident", "三叉戟");
+        put("fishing_rod", "钓鱼竿");
+        put("shears", "剪刀");
+        put("apple", "苹果");
+        put("bread", "面包");
+        put("seed", "种子");
+        put("seeds", "种子");
+        put("sapling", "树苗");
+        put("leaves", "树叶");
+        put("flower", "花");
+        put("flowers", "花");
+        put("coral", "珊瑚");
+        put("coral_block", "珊瑚块");
+        put("coral_fan", "珊瑚扇");
+        put("amethyst", "紫水晶");
+        put("bud", "芽");
+        put("copper", "铜");
+        put("iron", "铁");
+        put("gold", "金");
+        put("diamond", "钻石");
+        put("emerald", "绿宝石");
+        put("netherite", "下界合金");
+        put("redstone", "红石");
+        put("coal", "煤");
+        put("charcoal", "木炭");
+        put("lapis", "青金石");
+        put("quartz", "石英");
+        put("nether", "下界");
+        put("end", "末地");
+        put("chest", "箱子");
+        put("chests", "箱子");
+        put("boat", "船");
+        put("boats", "船");
+        put("chest_boat", "箱子船");
+        put("minecart", "矿车");
+        put("rail", "铁轨");
+        put("rails", "铁轨");
+        put("sign", "告示牌");
+        put("hanging_sign", "悬挂告示牌");
+        put("lantern", "灯笼");
+        put("chain", "锁链");
+        put("candle", "蜡烛");
+        put("banner", "旗帜");
+        put("bed", "床");
+        put("shulker_box", "潜影盒");
+        put("bundle", "收纳袋");
+        put("bucket", "桶");
+        put("potion", "药水");
+        put("music_disc", "唱片");
+        put("painting", "画");
+        put("goat_horn", "山羊角");
+        put("pottery_sherd", "陶片");
+        put("smithing_template", "升级模板");
+        put("armor_trim", "盔甲纹饰");
+        put("trim", "纹饰");
+        put("harness", "挽具");
+        put("spear", "长矛");
+        put("shelf", "架子");
+        put("shelves", "架子");
+        put("lightning_rod", "避雷针");
+        put("firework", "烟花");
+        put("chiseled", "雕纹");
+        put("cut", "切制");
+        put("grate", "格栅");
+        put("grates", "格栅");
+        put("bulb", "铜灯");
+        put("bulbs", "铜灯");
+        put("statue", "雕像");
+        put("head", "头颅");
+        put("skull", "头颅");
+        put("nautilus_armor", "鹦鹉螺盔甲");
+        put("armor", "盔甲");
+        put("tools", "工具");
+        put("tool", "工具");
+        put("weapon", "武器");
+        put("weapons", "武器");
+        put("gear", "装备");
+        put("material", "材料");
+        put("ingredient", "材料");
+        put("alloy", "合金");
+        put("casing", "外壳");
+        put("pipe", "管道");
+        put("cable", "线缆");
+        put("machine", "机器");
+        put("machines", "机器");
+        put("battery", "电池");
+        put("template", "模板");
+        put("plate", "板");
+        put("plates", "板");
+        put("rod", "杆");
+        put("rods", "杆");
+        put("crystal", "水晶");
+        put("circuit", "电路");
+        put("chip", "芯片");
+        put("component", "零件");
+        put("upgrade", "升级");
+        put("module", "模块");
         // Mod-common words the studio table lacked - the very "drawer" family the user named.
-        put("drawer", "抽屉"); put("drawers", "抽屉"); put("crate", "板条箱"); put("crates", "板条箱");
-        put("barrel", "木桶"); put("cabinet", "储物柜"); put("cabinets", "储物柜"); put("tank", "储罐");
-        put("tanks", "储罐"); put("generator", "发电机"); put("generators", "发电机"); put("drill", "钻头");
-        put("drills", "钻头"); put("wrench", "扳手"); put("hammer", "锤子"); put("dusts", "粉");
-        put("storage", "存储"); put("machine_block", "机器方块");
-        put("white", "白色"); put("orange", "橙色"); put("magenta", "品红"); put("light_blue", "淡蓝");
-        put("yellow", "黄色"); put("lime", "黄绿"); put("pink", "粉色"); put("gray", "灰色");
-        put("light_gray", "淡灰"); put("cyan", "青色"); put("purple", "紫色"); put("blue", "蓝色");
-        put("brown", "棕色"); put("green", "绿色"); put("red", "红色"); put("black", "黑色");
+        put("drawer", "抽屉");
+        put("drawers", "抽屉");
+        put("crate", "板条箱");
+        put("crates", "板条箱");
+        put("barrel", "木桶");
+        put("cabinet", "储物柜");
+        put("cabinets", "储物柜");
+        put("tank", "储罐");
+        put("tanks", "储罐");
+        put("generator", "发电机");
+        put("generators", "发电机");
+        put("drill", "钻头");
+        put("drills", "钻头");
+        put("wrench", "扳手");
+        put("hammer", "锤子");
+        put("dusts", "粉");
+        put("storage", "存储");
+        put("machine_block", "机器方块");
+        put("white", "白色");
+        put("orange", "橙色");
+        put("magenta", "品红");
+        put("light_blue", "淡蓝");
+        put("yellow", "黄色");
+        put("lime", "黄绿");
+        put("pink", "粉色");
+        put("gray", "灰色");
+        put("light_gray", "淡灰");
+        put("cyan", "青色");
+        put("purple", "紫色");
+        put("blue", "蓝色");
+        put("brown", "棕色");
+        put("green", "绿色");
+        put("red", "红色");
+        put("black", "黑色");
     }
 
     private static void put(String key, String value) {
@@ -117,7 +264,7 @@ public final class BctNames {
         for (ItemStack stack : members) {
             if (stack.isEmpty()) continue;
             Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (key != null) paths.add(key.getPath());
+            paths.add(key.getPath());
             displayNames.add(stack.getHoverName().getString());
         }
         if (paths.isEmpty()) return new Named(FALLBACK_PATH, FALLBACK_ZH, FALLBACK_EN);
@@ -155,13 +302,13 @@ public final class BctNames {
      */
     static String commonIdTail(List<String> paths) {
         if (paths.isEmpty()) return "";
-        if (paths.size() == 1) return paths.get(0).replace('_', '_');
+        if (paths.size() == 1) return paths.getFirst().replace('_', '_');
         Map<String, Integer> coverage = new LinkedHashMap<>();
         Map<String, Integer> endsWith = new LinkedHashMap<>();
         for (String path : paths) {
             List<String> words = new ArrayList<>();
             for (String word : path.split("_")) if (!word.isEmpty()) words.add(word);
-            Set<String> seen = new java.util.HashSet<>();
+            Set<String> seen = new HashSet<>();
             for (int i = 0; i < words.size(); i++) {
                 String word = words.get(i);
                 if (!seen.add(word)) continue;
@@ -204,7 +351,7 @@ public final class BctNames {
             if (!trimmed.isEmpty()) names.add(trimmed);
         }
         if (names.isEmpty()) return "";
-        if (names.size() == 1) return trimColorPrefix(stripConnectives(names.get(0)));
+        if (names.size() == 1) return trimColorPrefix(stripConnectives(names.getFirst()));
 
         Map<String, Integer> coverage = new LinkedHashMap<>();
         for (String name : names) {
@@ -244,14 +391,18 @@ public final class BctNames {
         return trimColorPrefix(stripConnectives(best));
     }
 
-    /** Longer wins outright (a real word beats its own tail); equal length falls back to wider coverage. */
+    /**
+     * Longer wins outright (a real word beats its own tail); equal length falls back to wider coverage.
+     */
     private static boolean betterFragment(String candidate, int candidateCoverage, String best, int bestCoverage) {
         if (best.isEmpty()) return true;
         if (candidate.length() != best.length()) return candidate.length() > best.length();
         return candidateCoverage > bestCoverage;
     }
 
-    /** Drops a leading connective that a mod's name left on the shared tail: "的避雷针" -&gt; "避雷针". */
+    /**
+     * Drops a leading connective that a mod's name left on the shared tail: "的避雷针" -&gt; "避雷针".
+     */
     private static String stripConnectives(String tail) {
         String out = tail;
         while (!out.isEmpty() && (out.charAt(0) == '的' || out.charAt(0) == '之' || out.charAt(0) == '和'))
@@ -272,14 +423,16 @@ public final class BctNames {
             // The shared tail often starts mid-colour ("色羊毛"), so match the colour's own tail too.
             for (int cut = 1; cut < color.length(); cut++) {
                 String fragment = color.substring(cut);
-                if (tail.startsWith(fragment) && tail.length() > fragment.length())
+                if (tail.startsWith(fragment))
                     return tail.substring(fragment.length());
             }
         }
         return tail;
     }
 
-    /** Dictionary lookup for a term's words; empty when any word is unknown (never half-translated). */
+    /**
+     * Dictionary lookup for a term's words; empty when any word is unknown (never half-translated).
+     */
     static String zhFromDict(String term) {
         StringBuilder out = new StringBuilder();
         for (String word : term.split("_")) {
@@ -308,7 +461,7 @@ public final class BctNames {
     static String deterministicSlug(List<String> paths) {
         List<String> sorted = new ArrayList<>(paths);
         sorted.sort(String::compareTo);
-        String first = sorted.get(0).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]+", "_").replaceAll("^_+|_+$", "");
+        String first = sorted.getFirst().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]+", "_").replaceAll("^_+|_+$", "");
         if (!first.isEmpty()) return truncate(first, 40);
         return FALLBACK_PATH;
     }

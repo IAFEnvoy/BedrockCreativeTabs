@@ -190,7 +190,9 @@ public final class CreativeGroupService {
         return UNIVERSE.getOrDefault(tab, List.of());
     }
 
-    /** Every tab that has anything foldable in it, in registration order. */
+    /**
+     * Every tab that has anything foldable in it, in registration order.
+     */
     public static Set<ResourceKey<CreativeModeTab>> builtTabs() {
         return Collections.unmodifiableSet(UNIVERSE.keySet());
     }

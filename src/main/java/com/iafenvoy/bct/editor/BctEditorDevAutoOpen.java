@@ -1,18 +1,17 @@
 package com.iafenvoy.bct.editor;
 
-import com.iafenvoy.bct.BedrockCreativeTabs;
-import com.iafenvoy.bct.data.BctGroupStore;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Development hooks that live in {@code <gameDir>/apricity/bct_editor/}:
+ * Development-only hooks that live in {@code <gameDir>/apricity/bct_editor/}; ignored in production:
  *
  * <ul>
  * <li>{@code autopen} - enters the picker once, as soon as the player is in a world with nothing else on screen.</li>
@@ -28,6 +27,7 @@ public final class BctEditorDevAutoOpen {
 
     @SubscribeEvent
     public static void onTick(ClientTickEvent.Post event) {
+        if (FMLEnvironment.isProduction()) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) return;
         Path dir = minecraft.gameDirectory.toPath().resolve(DIR);

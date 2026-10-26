@@ -7,8 +7,8 @@ import com.iafenvoy.bct.registry.BctDataComponents;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -65,21 +65,23 @@ public final class BctEditorMode {
         while (BctEditorKeys.TOGGLE_PICKER.consumeClick()) toggle(minecraft);
         // The screen died some other way (Esc, a menu): the green marks must not linger on nothing.
         if (BctEditorState.PICKER_MODE && !(minecraft.screen instanceof CreativeModeInventoryScreen)) {
-            BctEditorState.PICKER_MODE = false;
+            leavePicker();
         }
     }
 
     private static void toggle(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null) return;
         if (BctEditorState.PICKER_MODE && minecraft.screen instanceof CreativeModeInventoryScreen) {
-            BctEditorState.PICKER_MODE = false;
-            minecraft.player.sendOverlayMessage(Component.literal("BCT 选择模式已关闭"));
+            leavePicker();
+            minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.disabled"));
             return;
         }
         enterPicker(minecraft);
     }
 
-    /** Also the entry the command and the dev auto-open use. Call on the client thread. */
+    /**
+     * Also the entry the command and the dev auto-open use. Call on the client thread.
+     */
     public static void enterPicker(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null) return;
         BctEditorState.PICKER_MODE = true;
@@ -87,11 +89,20 @@ public final class BctEditorMode {
                 minecraft.screen == null ? "<none>" : minecraft.screen.getClass().getSimpleName());
         minecraft.setScreen(new CreativeModeInventoryScreen(minecraft.player,
                 minecraft.level.enabledFeatures(), minecraft.options.operatorItemsTab().get()));
-        minecraft.player.sendOverlayMessage(Component.literal(
-                "BCT 选择模式：点击/右键拖选 · 回车批量 · G 创建 · H 快捷键表 · B 退出"));
+        minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.enabled"));
     }
 
-    /** In-screen keys. Text boxes (the search field) swallow these first - never fold a group mid-typing. */
+    private static void leavePicker() {
+        BctEditorState.PICKER_MODE = false;
+        sweeping = false;
+        sweepDirection = 0;
+        lastSwept = null;
+        BctPickerOverlay.reset();
+    }
+
+    /**
+     * In-screen keys. Text boxes (the search field) swallow these first - never fold a group mid-typing.
+     */
     @SubscribeEvent
     public static void onKey(ScreenEvent.KeyPressed.Pre event) {
         if (!BctEditorState.PICKER_MODE) return;
@@ -100,13 +111,13 @@ public final class BctEditorMode {
         Minecraft minecraft = Minecraft.getInstance();
         int key = event.getKeyCode();
         if (key == GLFW.GLFW_KEY_B) {
-            BctEditorState.PICKER_MODE = false;
-            minecraft.player.sendOverlayMessage(Component.literal("BCT 选择模式已关闭"));
+            leavePicker();
+            minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.disabled"));
         } else if (key == GLFW.GLFW_KEY_G) {
-            minecraft.player.sendOverlayMessage(Component.literal(BctGroupCreator.createFromSelection()));
+            minecraft.player.sendOverlayMessage(BctGroupCreator.createFromSelection());
         } else if (key == GLFW.GLFW_KEY_C) {
             BctEditorState.CHOSEN.clear();
-            minecraft.player.sendOverlayMessage(Component.literal("已清空选择"));
+            minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.selection_cleared"));
         } else if (key == GLFW.GLFW_KEY_DELETE) {
             deleteHovered(minecraft, screen);
         } else if (key == GLFW.GLFW_KEY_H) {
@@ -125,10 +136,10 @@ public final class BctEditorMode {
         for (ItemStack stack : screen.getMenu().items) {
             if (stack.isEmpty() || stack.has(BctDataComponents.CREATIVE_GROUP_ID)) continue;
             Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (id != null && BctEditorState.CHOSEN.add(id.toString())) added++;
+            if (BctEditorState.CHOSEN.add(id.toString())) added++;
         }
-        minecraft.player.sendOverlayMessage(Component.literal(
-                "批量选中 " + added + " 个物品（共 " + BctEditorState.CHOSEN.size() + " 个）"));
+        minecraft.player.sendOverlayMessage(Component.translatable(
+                "editor.bedrock_creative_tabs.batch_selected", added, BctEditorState.CHOSEN.size()));
     }
 
     private static void deleteHovered(Minecraft minecraft, CreativeModeInventoryScreen screen) {
@@ -136,13 +147,13 @@ public final class BctEditorMode {
         ItemStack hovered = slot == null ? ItemStack.EMPTY : slot.getItem();
         Identifier id = hovered.get(BctDataComponents.CREATIVE_GROUP_ID);
         if (id == null || !CreativeGroupLoader.isUser(id)) {
-            minecraft.player.sendOverlayMessage(Component.literal("悬停的不是自己的分组图标，无法删除"));
+            minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.delete_hover_own"));
             return;
         }
         BctGroupStore.delete(id);
         CreativeGroupLoader.removeUser(id);
         CreativeGroupService.onGroupsReloaded();
-        minecraft.player.sendOverlayMessage(Component.literal("已删除 " + id));
+        minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.deleted", id.toString()));
     }
 
     /**
@@ -162,7 +173,6 @@ public final class BctEditorMode {
         ItemStack clicked = slot.getItem();
         if (clicked.isEmpty() || clicked.has(BctDataComponents.CREATIVE_GROUP_ID)) return;
         Identifier id = BuiltInRegistries.ITEM.getKey(clicked.getItem());
-        if (id == null) return;
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             // The first item under the sweep decides its direction: sweeping adds, sweeping over selected removes.
             sweeping = true;
@@ -175,7 +185,9 @@ public final class BctEditorMode {
         event.setCanceled(true);
     }
 
-    /** Sweep-select: every slot the cursor crosses while the right button is held joins the sweep. */
+    /**
+     * Sweep-select: every slot the cursor crosses while the right button is held joins the sweep.
+     */
     @SubscribeEvent
     public static void onDrag(ScreenEvent.MouseDragged.Pre event) {
         if (!BctEditorState.PICKER_MODE || !sweeping) return;
@@ -185,7 +197,7 @@ public final class BctEditorMode {
         ItemStack hovered = slot == null ? ItemStack.EMPTY : slot.getItem();
         if (hovered.isEmpty() || hovered.has(BctDataComponents.CREATIVE_GROUP_ID)) return;
         Identifier id = BuiltInRegistries.ITEM.getKey(hovered.getItem());
-        if (id != null) sweepTo(id, minecraft());
+        sweepTo(id, minecraft());
         event.setCanceled(true);
     }
 
@@ -199,43 +211,49 @@ public final class BctEditorMode {
         lastSwept = id;
         if (sweepDirection > 0) BctEditorState.CHOSEN.add(id.toString());
         else BctEditorState.CHOSEN.remove(id.toString());
-        minecraft.player.sendOverlayMessage(Component.literal("已选 " + BctEditorState.CHOSEN.size() + " 个物品"));
+        minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.selected", BctEditorState.CHOSEN.size()));
     }
 
     private static void toggleOne(Identifier id, Minecraft minecraft) {
         if (!BctEditorState.CHOSEN.remove(id.toString())) BctEditorState.CHOSEN.add(id.toString());
-        minecraft.player.sendOverlayMessage(Component.literal("已选 " + BctEditorState.CHOSEN.size() + " 个物品"));
+        minecraft.player.sendOverlayMessage(Component.translatable("editor.bedrock_creative_tabs.selected", BctEditorState.CHOSEN.size()));
     }
 
     private static Minecraft minecraft() {
         return Minecraft.getInstance();
     }
 
-    /** The keybind panel, top left: every key the mode answers, toggled with H. */
+    /**
+     * The keybind panel, top left: every key the mode answers, toggled with H.
+     */
     @SubscribeEvent
     public static void onRender(ScreenEvent.Render.Post event) {
         if (!BctEditorState.PICKER_MODE || !helpVisible) return;
-        if (!(event.getScreen() instanceof CreativeModeInventoryScreen)) return;
+        if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) return;
         GuiGraphicsExtractor graphics = event.getGuiGraphics();
         Font font = minecraft().font;
-        String[] lines = {
-                "BCT 选择模式 (H 收起)",
-                "点击 选中 / 取消",
-                "右键拖动 批量框选",
-                "回车 批量选中当前列表",
-                "中键 物品标签列表",
-                "R 重命名悬停的组",
-                "G 创建分组",
-                "C 清空选择",
-                "Delete 删除悬停的组",
-                "B 退出"
+        Component[] lines = {
+                Component.translatable("editor.bedrock_creative_tabs.help.title"),
+                Component.translatable("editor.bedrock_creative_tabs.help.click"),
+                Component.translatable("editor.bedrock_creative_tabs.help.drag"),
+                Component.translatable("editor.bedrock_creative_tabs.help.batch"),
+                Component.translatable("editor.bedrock_creative_tabs.help.tags"),
+                Component.translatable("editor.bedrock_creative_tabs.help.rename"),
+                Component.translatable("editor.bedrock_creative_tabs.help.create"),
+                Component.translatable("editor.bedrock_creative_tabs.help.clear"),
+                Component.translatable("editor.bedrock_creative_tabs.help.delete"),
+                Component.translatable("editor.bedrock_creative_tabs.help.exit")
         };
+        int width = PANEL_W;
+        for (Component line : lines) width = Math.max(width, font.width(line) + 12);
+        width = Math.min(width, screen.width - PANEL_X - 4);
         int height = 8 + lines.length * LINE;
-        graphics.fill(RenderPipelines.GUI, PANEL_X, PANEL_Y, PANEL_X + PANEL_W, PANEL_Y + height, 0xB0131314);
+        graphics.fill(RenderPipelines.GUI, PANEL_X, PANEL_Y, PANEL_X + width, PANEL_Y + height, 0xB0131314);
         graphics.fill(RenderPipelines.GUI, PANEL_X, PANEL_Y, PANEL_X + 1, PANEL_Y + height, 0xff3c8527);
         for (int index = 0; index < lines.length; index++) {
             int color = index == 0 ? 0xff6cc349 : 0xffe4e5e8;
-            graphics.text(font, Component.literal(lines[index]), PANEL_X + 6, PANEL_Y + 4 + index * LINE, color);
+            graphics.text(font, font.plainSubstrByWidth(lines[index].getString(), width - 12),
+                    PANEL_X + 6, PANEL_Y + 4 + index * LINE, color);
         }
     }
 

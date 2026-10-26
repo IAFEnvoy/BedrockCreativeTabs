@@ -1,13 +1,12 @@
 package com.iafenvoy.bct.editor;
 
 import com.iafenvoy.bct.api.GroupEntry;
+import com.iafenvoy.bct.data.CreativeGroup;
+import com.iafenvoy.bct.data.CreativeGroupLoader;
 import com.iafenvoy.bct.data.entry.ItemEntry;
 import com.iafenvoy.bct.data.entry.ItemTagEntry;
-import com.iafenvoy.bct.data.CreativeGroupLoader;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
-import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
@@ -15,11 +14,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Candidate groups the editor proposes on its own, so the player starts from suggestions instead of an empty
@@ -32,7 +27,7 @@ import java.util.TreeSet;
  * {@code *_sword}, ...), for the families no tag covers.</li>
  * </ul>
  *
- * <p>A candidate whose member set equals a group the loader already holds is marked {@link Candidate#duplicate()}
+ * <p>A candidate whose member set equals a group the loader already holds is marked
  * and a candidate is dropped when an earlier one claimed the same set - tags run first, so the suffix pass only
  * fills gaps. Members are the universe intersection, which is what folding would actually take.
  *
@@ -40,7 +35,9 @@ import java.util.TreeSet;
  * back to the English {@code titleCase} rather than shipping half-translated names.
  */
 public final class BctCandidates {
-    /** A proposed group. {@code path} is the id path it would save under. */
+    /**
+     * A proposed group. {@code path} is the id path it would save under.
+     */
     public record Candidate(String path, String label, String nameZh, String nameEn,
                             List<GroupEntry> entries, List<String> memberIds) {
     }
@@ -48,7 +45,9 @@ public final class BctCandidates {
     private static final int MIN_ITEMS = 4;
     private static final int MAX_ITEMS = 200;
 
-    /** The external studio's calibrated suffix list, verbatim. */
+    /**
+     * The external studio's calibrated suffix list, verbatim.
+     */
     private static final List<String> SUFFIXES = List.of(
             "planks", "stairs", "slab", "walls", "fence", "fence_gate", "door", "trapdoor", "button", "pressure_plate",
             "bars", "pane", "chain", "lantern", "candle", "banner", "bed", "shulker_box", "bundle", "sign",
@@ -60,7 +59,7 @@ public final class BctCandidates {
             "glazed_terracotta", "wool", "carpet", "glass", "glass_pane", "brick", "stone", "cobblestone",
             "sandstone", "deepslate");
 
-    private static final Map<String, String> ZH = Map.ofEntries(
+    private static final Map<String, String> ZH = Map.<String, String>ofEntries(
             Map.entry("planks", "木板"), Map.entry("log", "原木"), Map.entry("logs", "原木"), Map.entry("wood", "木"),
             Map.entry("stripped", "去皮"), Map.entry("stem", "菌柄"), Map.entry("hyphae", "菌核"),
             Map.entry("stairs", "楼梯"), Map.entry("slab", "台阶"), Map.entry("slabs", "台阶"), Map.entry("wall", "墙"),
@@ -126,13 +125,15 @@ public final class BctCandidates {
     private BctCandidates() {
     }
 
-    /** Generates the full candidate list, tags first, then suffixes; same-set duplicates collapse. */
+    /**
+     * Generates the full candidate list, tags first, then suffixes; same-set duplicates collapse.
+     */
     public static List<Candidate> generate() {
         Map<String, ItemStack> universe = new LinkedHashMap<>();
         for (ItemStack stack : CreativeGroupService.universe()) {
             if (stack.isEmpty()) continue;
             Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (key != null) universe.putIfAbsent(key.toString(), stack);
+            universe.putIfAbsent(key.toString(), stack);
         }
         Map<String, Candidate> out = new LinkedHashMap<>();
         Map<String, String> existing = existingSignatures();
@@ -177,7 +178,7 @@ public final class BctCandidates {
             List<GroupEntry> entries = new ArrayList<>();
             for (String id : new TreeSet<>(members)) {
                 Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(id));
-                if (item != null) entries.add(new ItemEntry(item));
+                entries.add(new ItemEntry(item));
             }
             Candidate candidate = new Candidate("auto_" + suffix, "*_" + suffix, zhName(suffix), titleCase(suffix),
                     entries, members);
@@ -191,15 +192,17 @@ public final class BctCandidates {
         out.put(signature, candidate);
     }
 
-    /** What the loader's groups already fold, as member-set signatures - a candidate equal to one is redundant. */
+    /**
+     * What the loader's groups already fold, as member-set signatures - a candidate equal to one is redundant.
+     */
     private static Map<String, String> existingSignatures() {
         Map<String, String> signatures = new LinkedHashMap<>();
-        for (Map.Entry<Identifier, com.iafenvoy.bct.data.CreativeGroup> entry : CreativeGroupLoader.groups().entrySet()) {
+        for (Map.Entry<Identifier, CreativeGroup> entry : CreativeGroupLoader.groups().entrySet()) {
             TreeSet<String> ids = new TreeSet<>();
             for (ResourceKey<CreativeModeTab> tab : entry.getValue().creativeTabs()) {
                 for (ItemStack stack : CreativeGroupService.members(tab, entry.getKey())) {
                     Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    if (key != null) ids.add(key.toString());
+                    ids.add(key.toString());
                 }
             }
             if (!ids.isEmpty()) signatures.put(String.join(",", ids), entry.getKey().toString());
@@ -207,7 +210,9 @@ public final class BctCandidates {
         return signatures;
     }
 
-    /** Term words joined through the table; any unknown word falls back to empty, and the caller uses English. */
+    /**
+     * Term words joined through the table; any unknown word falls back to empty, and the caller uses English.
+     */
     private static String zhName(String term) {
         StringBuilder out = new StringBuilder();
         for (String part : term.split("_")) {

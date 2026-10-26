@@ -64,7 +64,9 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener<
         return groups;
     }
 
-    /** Adds or replaces one editor-made group, and makes the merge visible to every reader at once. */
+    /**
+     * Adds or replaces one editor-made group, and makes the merge visible to every reader at once.
+     */
     public static void putUser(Identifier id, CreativeGroup group) {
         user.put(id, group);
         merge();
@@ -76,7 +78,9 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener<
         return true;
     }
 
-    /** Whether a group came from the writable directory rather than a pack. */
+    /**
+     * Whether a group came from the writable directory rather than a pack.
+     */
     public static boolean isUser(Identifier id) {
         return user.containsKey(id);
     }

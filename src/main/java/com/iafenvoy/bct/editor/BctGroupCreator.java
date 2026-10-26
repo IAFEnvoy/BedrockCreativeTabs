@@ -8,9 +8,9 @@ import com.iafenvoy.bct.data.CreativeGroupLoader;
 import com.iafenvoy.bct.data.entry.ItemEntry;
 import com.iafenvoy.bct.data.entry.ItemTagEntry;
 import com.iafenvoy.bct.runtime.CreativeGroupService;
-import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
@@ -18,14 +18,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Turns the shared selection ({@link BctEditorState#CHOSEN}) into a saved, folded group - the one operation every
@@ -40,10 +33,12 @@ public final class BctGroupCreator {
     private BctGroupCreator() {
     }
 
-    /** The whole loop in one call; the returned line is fit for an action bar or a panel. */
-    public static String createFromSelection() {
+    /**
+     * The whole loop in one call; the returned line is fit for an action bar or a panel.
+     */
+    public static Component createFromSelection() {
         Set<String> chosen = BctEditorState.CHOSEN;
-        if (chosen.isEmpty()) return "先点选物品，再创建分组";
+        if (chosen.isEmpty()) return Component.translatable("editor.bedrock_creative_tabs.create_empty");
         Map<String, ItemStack> universe = universeById();
 
         // The members first, so the name can be derived from the very items being folded.
@@ -63,13 +58,13 @@ public final class BctGroupCreator {
         } else {
             for (String id : new TreeSet<>(chosen)) {
                 Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(id));
-                if (item != null) entries.add(new ItemEntry(item));
+                entries.add(new ItemEntry(item));
             }
             name = BctNames.fromMembers(members);
         }
 
         List<ResourceKey<CreativeModeTab>> tabs = tabsContaining(universe, chosen);
-        if (tabs.isEmpty()) return "这些物品不在任何创造页里，BCT 无法折叠它们";
+        if (tabs.isEmpty()) return Component.translatable("editor.bedrock_creative_tabs.create_no_tabs");
 
         Identifier id = uniqueId(name.path(), entries);
         int priority = planPriority(id, entries, tabs);
@@ -90,16 +85,15 @@ public final class BctGroupCreator {
             int count = CreativeGroupService.members(tab, id).size();
             if (count > folded) {
                 folded = count;
-                landed = tab;
             }
         }
         BedrockCreativeTabs.LOGGER.info("BCT editor: created {} priority={} tabs={} folded={} name={} / {}",
                 id, priority, tabs, folded, name.nameZh(), name.nameEn());
         String label = name.nameZh().equals(name.nameEn()) ? name.nameZh() : name.nameZh() + " / " + name.nameEn();
         if (folded > 0)
-            return "已创建 " + label + " · 折起 " + folded + " 个 · 按 R 可微调名称";
-        return "已创建 " + label + "，但没有折到物品：同页的 " + winner(id, tabs.getFirst(), entries)
-                + " 优先级更高，先把这些物品折走了";
+            return Component.translatable("editor.bedrock_creative_tabs.created", label, folded);
+        return Component.translatable("editor.bedrock_creative_tabs.created_conflict",
+                label, winner(id, tabs.getFirst(), entries));
     }
 
     private static Map<String, ItemStack> universeById() {
@@ -107,7 +101,7 @@ public final class BctGroupCreator {
         for (ItemStack stack : CreativeGroupService.universe()) {
             if (stack.isEmpty()) continue;
             Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (key != null) universe.putIfAbsent(key.toString(), stack);
+            universe.putIfAbsent(key.toString(), stack);
         }
         return universe;
     }
@@ -154,19 +148,25 @@ public final class BctGroupCreator {
         }
         if (theirSizes.isEmpty()) return 0;
         boolean wins = true;
-        for (int size : theirSizes) if (mine.size() > size) wins = false;
+        for (int size : theirSizes)
+            if (mine.size() > size) {
+                wins = false;
+                break;
+            }
         return wins ? highest + 1 : lowest - 1;
     }
 
-    /** Which other group on this tab already claims something this one wanted, for a readable failure. */
-    private static String winner(Identifier mine, ResourceKey<CreativeModeTab> tab, List<GroupEntry> entries) {
+    /**
+     * Which other group on this tab already claims something this one wanted, for a readable failure.
+     */
+    private static Component winner(Identifier mine, ResourceKey<CreativeModeTab> tab, List<GroupEntry> entries) {
         List<ItemStack> wanted = membersOf(entries);
         for (Map.Entry<Identifier, CreativeGroup> entry : CreativeGroupLoader.groups().entrySet()) {
             if (entry.getKey().equals(mine)) continue;
             List<ItemStack> theirs = CreativeGroupService.members(tab, entry.getKey());
-            if (theirs.stream().anyMatch(wanted::contains)) return entry.getKey().toString();
+            if (theirs.stream().anyMatch(wanted::contains)) return Component.literal(entry.getKey().toString());
         }
-        return "另一个分组";
+        return Component.translatable("editor.bedrock_creative_tabs.another_group");
     }
 
     private static List<ItemStack> membersOf(List<GroupEntry> entries) {
@@ -211,14 +211,16 @@ public final class BctGroupCreator {
         return null;
     }
 
-    /** Every tab that holds at least one of the chosen items. */
+    /**
+     * Every tab that holds at least one of the chosen items.
+     */
     private static List<ResourceKey<CreativeModeTab>> tabsContaining(Map<String, ItemStack> universe, Set<String> chosen) {
         List<ResourceKey<CreativeModeTab>> tabs = new ArrayList<>();
         for (ResourceKey<CreativeModeTab> key : CreativeGroupService.builtTabs()) {
             for (ItemStack stack : CreativeGroupService.universe(key)) {
                 if (stack.isEmpty()) continue;
                 Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                if (id != null && chosen.contains(id.toString())) {
+                if (chosen.contains(id.toString())) {
                     tabs.add(key);
                     break;
                 }

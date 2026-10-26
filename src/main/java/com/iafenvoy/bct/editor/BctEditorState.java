@@ -8,9 +8,13 @@ import java.util.LinkedHashSet;
  * surfaces, and reopening the game screen. No AUI imports - the picker path must not load them.
  */
 public final class BctEditorState {
-    /** Chosen item ids, in pick order. */
+    /**
+     * Chosen item ids, in pick order.
+     */
     public static final LinkedHashSet<String> CHOSEN = new LinkedHashSet<>();
-    /** Whether clicks in the creative screen toggle selection and the green marker paints. */
+    /**
+     * Whether clicks in the creative screen toggle selection and the green marker paints.
+     */
     public static volatile boolean PICKER_MODE;
 
     private BctEditorState() {

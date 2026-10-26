@@ -3,9 +3,9 @@ package com.iafenvoy.bct.registry;
 import com.iafenvoy.bct.BedrockCreativeTabs;
 import com.iafenvoy.bct.api.GroupEntry;
 import com.mojang.serialization.MapCodec;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.core.Registry;
 
 /**
  * The registry keys this mod owns.

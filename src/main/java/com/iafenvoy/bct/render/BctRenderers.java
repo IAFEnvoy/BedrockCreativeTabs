@@ -1,10 +1,10 @@
 package com.iafenvoy.bct.render;
 
-import com.iafenvoy.bct.BedrockCreativeTabs;
 import com.iafenvoy.bct.editor.BctEditorState;
 import com.iafenvoy.bct.registry.BctItems;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
@@ -14,7 +14,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.IItemDecorator;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
-import net.minecraft.client.renderer.RenderPipelines;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Where the group icon's own drawing is hung: the decoration is registered against the group item, so it runs for
@@ -39,17 +39,19 @@ public final class BctRenderers {
     private BctRenderers() {
     }
 
-    /** The picker mode's selection mark: a green wash plus edge on every chosen stack, in any screen. */
+    /**
+     * The picker mode's selection mark: a green wash plus edge on every chosen stack, in any screen.
+     */
     public enum SelectedMarker implements IItemDecorator {
         INSTANCE;
         private static final int WASH = 0x583c8527;
         private static final int EDGE = 0xff6cc349;
 
         @Override
-        public boolean render(GuiGraphicsExtractor graphics, Font font, ItemStack stack, int x, int y) {
+        public boolean render(@NonNull GuiGraphicsExtractor graphics, @NonNull Font font, @NonNull ItemStack stack, int x, int y) {
             if (!BctEditorState.PICKER_MODE) return false;
             Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (id == null || !BctEditorState.CHOSEN.contains(id.toString())) return false;
+            if (!BctEditorState.CHOSEN.contains(id.toString())) return false;
             graphics.fill(RenderPipelines.GUI, x, y, x + 16, y + 16, WASH);
             graphics.fill(RenderPipelines.GUI, x, y, x + 16, y + 1, EDGE);
             graphics.fill(RenderPipelines.GUI, x, y + 15, x + 16, y + 16, EDGE);
