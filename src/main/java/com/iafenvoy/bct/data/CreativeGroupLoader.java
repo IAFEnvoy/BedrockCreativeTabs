@@ -46,6 +46,11 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
     private static volatile Map<ResourceLocation, CreativeGroup> groups = Map.of();
     // Per entry, what the tabs built so far have said about it. Dropped with the table it describes.
     private static final Map<EntryKey, EntryCheck> entryChecks = new ConcurrentHashMap<>();
+    // What the resource packs define. Kept apart from the editor's own directory so a reload replaces one without
+    // touching the other.
+    private static volatile Map<ResourceLocation, CreativeGroup> packed = Map.of();
+    // What the editor wrote, in file order. A user definition overrides a pack one with the same id.
+    private static final Map<ResourceLocation, CreativeGroup> user = new LinkedHashMap<>();
     // Set once every entry has been judged against every tab its group names.
     private static volatile boolean fullyChecked = true;
 
@@ -65,6 +70,37 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
      */
     public static final Comparator<Map.Entry<ResourceLocation, CreativeGroup>> ORDER = Map.Entry.comparingByValue(Comparator.comparingInt(CreativeGroup::priority).reversed());
 
+    /**
+     * Adds or replaces one editor-made group, and makes the merge visible to every reader at once.
+     */
+    public static void putUser(ResourceLocation id, CreativeGroup group) {
+        user.put(id, group);
+        merge();
+    }
+
+    public static boolean removeUser(ResourceLocation id) {
+        if (user.remove(id) == null) return false;
+        merge();
+        return true;
+    }
+
+    /**
+     * Whether a group of this id came from the editor's directory rather than a pack - what decides if it may be
+     * renamed or deleted in game.
+     */
+    public static boolean isUser(ResourceLocation id) {
+        return user.containsKey(id);
+    }
+
+    /**
+     * User groups last, so one sharing an id with a pack group replaces it rather than sitting next to it.
+     */
+    private static void merge() {
+        LinkedHashMap<ResourceLocation, CreativeGroup> merged = new LinkedHashMap<>(packed);
+        merged.putAll(user);
+        groups = Map.copyOf(merged);
+    }
+
     @SubscribeEvent
     public static void addReloadListeners(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener(new CreativeGroupLoader());
@@ -80,10 +116,15 @@ public final class CreativeGroupLoader extends SimpleJsonResourceReloadListener 
         prepared.forEach((id, json) -> CreativeGroup.CODEC.parse(JsonOps.INSTANCE, json)
                 .resultOrPartial(error -> LOGGER.error("Skipping bedrock creative group {}: {}", id, error))
                 .ifPresent(group -> parsed.put(id, group)));
-        groups = Map.copyOf(parsed);
+        packed = Map.copyOf(parsed);
+        // The editor's directory is read here too: it is the same layout, and a reload is the only point where both
+        // sides are known at once.
+        user.clear();
+        user.putAll(BctGroupStore.load());
+        merge();
         entryChecks.clear();
         fullyChecked = false;
-        LOGGER.info("Loaded {} bedrock creative group(s)", parsed.size());
+        LOGGER.info("Loaded {} bedrock creative group(s), {} from the editor", parsed.size(), user.size());
         CreativeGroupService.onGroupsReloaded();
     }
 

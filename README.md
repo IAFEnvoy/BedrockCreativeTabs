@@ -8,6 +8,42 @@ This is a client-side mod. **But for stability, it's recommended to install this
 
 ![](https://raw.githubusercontent.com/IAFEnvoy/BedrockCreativeTabs/refs/heads/master/img/1.webp)
 
+## In-game group editor
+
+In a world with creative mode enabled, press **B** (configurable in Controls) or run **`/bct edit`** to open
+the group picker. It uses the normal creative inventory, including items added by other mods.
+
+| Action | Control |
+|--------|---------|
+| Select or deselect an item | Left-click |
+| Add or remove several items | Hold right-click and drag over items; the first item determines whether the sweep adds or removes |
+| Select the current tab's list, or the vanilla search results | Enter while no text box is focused |
+| Select matching names or IDs on the current tab | Type in the extra search box, then press Enter or click **Select matches** |
+| Select all items in an item tag | Middle-click an item, then click a tag; scroll to browse the list |
+| Create a group from the selection | G |
+| Rename one of your own groups in Chinese and English | Hover over its icon and press R; save with Enter or **Save**; a blank field keeps its existing name |
+| Delete one of your own groups | Hover over its icon and press Delete |
+| Clear the selection | C |
+| Show or hide the shortcut panel | H |
+| Leave picker mode | B, or close the inventory |
+
+Text boxes take priority over shortcuts while focused. After selecting matches, focus returns to the picker.
+If the extra search box is unavailable in a narrow window, widen the window or lower GUI Scale; vanilla search,
+renaming, and item tags remain available.
+
+Creating a group automatically chooses its name, uses an exact matching item tag when possible (otherwise item IDs),
+and infers its creative tabs and priority. Groups take effect immediately, and creating one clears the selection.
+The editor follows the game's language, with English and Simplified Chinese translations included.
+
+Your definitions are saved locally under **`config/bedrock_creative_tabs/groups/<namespace>/<path>.json`** and names
+under **`config/bedrock_creative_tabs/lang/{zh_cn,en_us}.json`**, relative to the game directory. Local definitions
+override resource-pack groups with the same ID. They are not synchronized to other players or the server.
+
+Run **`/bct export`** to create **`resourcepacks/BCT_groups.zip`** containing your local groups and names. Each export
+replaces that ZIP and uses the running game's resource-pack version. Share it with another BCT user, who can place
+it in their `resourcepacks` directory and enable it in **Options → Resource Packs**. Use **F3+T** to reload changes
+to an already enabled pack.
+
 ## Resource pack
 
 One JSON file per group, at `assets/<namespace>/bedrock_creative_tabs/creative_group/<path>.json`:
